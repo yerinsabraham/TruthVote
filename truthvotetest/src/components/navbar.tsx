@@ -26,7 +26,10 @@ const wallets = [
   createWallet("io.zerion.wallet"),
 ];
 
-const ADMIN_ADDRESS = "0x50864E907632D310D19280bD972ceC1d5b2fbBf3";
+const ADMIN_ADDRESSES = [
+  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3", // Existing admin
+  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95", // New admin
+];
 
 export function Navbar() {
   const account = useActiveAccount();
@@ -37,21 +40,21 @@ export function Navbar() {
   console.log("Connected account:", account?.address);
 
   const handleBannerSubmit = async () => {
-    if (!account || account.address !== ADMIN_ADDRESS || !bannerUrl) return;
+    if (!account || !ADMIN_ADDRESSES.includes(account.address) || !bannerUrl) return;
 
     try {
-      const response = await fetch("http://localhost:3001/banner", {
+      const response = await fetch("/api/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: account.address, bannerUrl }),
       });
-      if (response.ok) {
-        console.log("Banner updated:", bannerUrl);
-        setOpenAdmin(false);
-        setBannerUrl("");
-      } else {
-        console.error("Failed to update banner:", await response.json());
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
+      const data = await response.json();
+      console.log("Banner updated:", data);
+      setOpenAdmin(false);
+      setBannerUrl("");
     } catch (error) {
       console.error("Error updating banner:", error);
     }
@@ -70,7 +73,7 @@ export function Navbar() {
             Create
           </Button>
         )}
-        {account?.address === ADMIN_ADDRESS && (
+        {account && ADMIN_ADDRESSES.includes(account.address) && (
           <Button
             onClick={() => setOpenAdmin(true)}
             variant="default"
