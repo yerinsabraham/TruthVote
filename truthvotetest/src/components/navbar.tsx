@@ -27,13 +27,14 @@ const wallets = [
 ];
 
 const ADMIN_ADDRESSES = [
-  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3",
-  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95",
+  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3", // Existing admin 1
+  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95", // Existing admin 2
+  "0x0CAfc81A92d4c7a6ebeef6ECB3B1596b1e65db08", // New admin
 ];
 
 const API_URL = process.env.NODE_ENV === "development" ? "http://localhost:3001/banner" : "/api/banner";
 
-export function Navbar({ onBannerUpdate }: { onBannerUpdate: (newBanner: string) => void }) { // Type prop
+export function Navbar({ onBannerUpdate }: { onBannerUpdate: (newBanner: string) => void }) {
   const account = useActiveAccount();
   const [openCreate, setOpenCreate] = useState(false);
   const [openAdmin, setOpenAdmin] = useState(false);
