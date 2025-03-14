@@ -11,6 +11,8 @@ import { MarketCardSkeleton } from "./market-card-skeleton";
 import { Footer } from "./footer";
 import { readContract } from "thirdweb";
 
+const API_URL = process.env.NODE_ENV === "development" ? "http://localhost:3001/banner" : "/api/banner";
+
 export function TruthVoteDashboard() {
     const { data: marketCount, isLoading: isLoadingMarketCount } = useReadContract({
         contract,
@@ -50,9 +52,11 @@ export function TruthVoteDashboard() {
     useEffect(() => {
         async function fetchBanner() {
             try {
-                const response = await fetch("/api/banner");
+                const response = await fetch(API_URL);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    console.warn("Banner fetch failed, using default:", response.status);
+                    setBanner("/assets/banner1.png");
+                    return;
                 }
                 const data = await response.json();
                 setBanner(data.banner);
@@ -64,7 +68,7 @@ export function TruthVoteDashboard() {
         fetchBanner();
     }, []);
 
-    const handleBannerUpdate = (newBanner: string) => { // Type parameter
+    const handleBannerUpdate = (newBanner: string) => {
         setBanner(newBanner);
     };
 
