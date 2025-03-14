@@ -50,16 +50,23 @@ export function TruthVoteDashboard() {
     useEffect(() => {
         async function fetchBanner() {
             try {
-                const response = await fetch("http://localhost:3001/banner");
+                const response = await fetch("/api/banner");
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
                 const data = await response.json();
                 setBanner(data.banner);
             } catch (error) {
                 console.error("Error fetching banner:", error);
-                setBanner("/assets/banner1.png"); // Fallback
+                setBanner("/assets/banner1.png");
             }
         }
         fetchBanner();
     }, []);
+
+    const handleBannerUpdate = (newBanner: string) => { // Type parameter
+        setBanner(newBanner);
+    };
 
     const skeletonCards = Array.from({ length: 6 }, (_, i) => (
         <MarketCardSkeleton key={`skeleton-${i}`} />
@@ -68,7 +75,7 @@ export function TruthVoteDashboard() {
     return (
         <div className="min-h-screen flex flex-col">
             <div className="flex-grow container mx-auto p-4">
-                <Navbar />
+                <Navbar onBannerUpdate={handleBannerUpdate} />
                 <div className="mb-4">
                     <img 
                         src={banner}

@@ -27,11 +27,13 @@ const wallets = [
 ];
 
 const ADMIN_ADDRESSES = [
-  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3", // Existing admin
-  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95", // New admin
+  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3",
+  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95",
 ];
 
-export function Navbar() {
+const API_URL = process.env.NODE_ENV === "development" ? "http://localhost:3001/banner" : "/api/banner";
+
+export function Navbar({ onBannerUpdate }: { onBannerUpdate: (newBanner: string) => void }) { // Type prop
   const account = useActiveAccount();
   const [openCreate, setOpenCreate] = useState(false);
   const [openAdmin, setOpenAdmin] = useState(false);
@@ -43,7 +45,7 @@ export function Navbar() {
     if (!account || !ADMIN_ADDRESSES.includes(account.address) || !bannerUrl) return;
 
     try {
-      const response = await fetch("/api/banner", {
+      const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: account.address, bannerUrl }),
@@ -53,6 +55,7 @@ export function Navbar() {
       }
       const data = await response.json();
       console.log("Banner updated:", data);
+      if (onBannerUpdate) onBannerUpdate(data.banner);
       setOpenAdmin(false);
       setBannerUrl("");
     } catch (error) {
@@ -115,6 +118,7 @@ export function Navbar() {
           </DialogHeader>
           <div className="space-y-4">
             <Input
+              id="banner-url"
               placeholder="Enter new banner URL"
               value={bannerUrl}
               onChange={(e) => setBannerUrl(e.target.value)}
