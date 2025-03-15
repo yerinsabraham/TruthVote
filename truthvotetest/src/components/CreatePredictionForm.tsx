@@ -99,12 +99,12 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
             />
           </div>
           <div>
-            <Label htmlFor="link">Link to support the prediction</Label>
+            <Label htmlFor="link">Support Link</Label>
             <Input
               id="link"
               value={link}
               onChange={(e) => setLink(e.target.value)}
-              placeholder="e.g., https://example.com (link to support the market)"
+              placeholder="e.g., https://example.com (link to support your prediction)"
             />
           </div>
           <div>
