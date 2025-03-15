@@ -99,7 +99,7 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
             />
           </div>
           <div>
-            <Label htmlFor="link">Supporting Link</Label>
+            <Label htmlFor="link">Link to support the prediction</Label>
             <Input
               id="link"
               value={link}
