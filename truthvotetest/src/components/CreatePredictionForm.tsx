@@ -4,14 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSendAndConfirmTransaction } from "thirdweb/react";
 import { contract } from "@/constants/contracts";
 import { prepareContractCall } from "thirdweb";
 import { toast } from "sonner";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format as formatDate } from "date-fns"; // Correct ESM import
 
 interface CreatePredictionFormProps {
   open: boolean;
@@ -24,7 +20,7 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
   const [optionB, setOptionB] = useState("");
   const [link, setLink] = useState("");
   const [category, setCategory] = useState("");
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState("");
   const { mutate: sendAndConfirmTx, isPending } = useSendAndConfirmTransaction();
 
   const handleSubmit = async () => {
@@ -33,13 +29,14 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
       return;
     }
 
+    const selectedDate = new Date(endDate);
     const now = new Date();
-    if (endDate <= now) {
+    if (selectedDate <= now) {
       toast.error("End date must be in the future.");
       return;
     }
 
-    const durationInSeconds = Math.floor((endDate.getTime() - now.getTime()) / 1000);
+    const durationInSeconds = Math.floor((selectedDate.getTime() - now.getTime()) / 1000);
     if (durationInSeconds <= 0) {
       toast.error("Duration must be positive.");
       return;
@@ -49,18 +46,18 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
       const transaction = prepareContractCall({
         contract,
         method: "function createMarket(string _question, string _optionA, string _optionB, uint256 _duration, string _link, uint256 _categoryId)",
-        params: [question, optionA, optionB, BigInt(durationInSeconds), link, BigInt(category)],
+        params: [question, optionA, optionB, BigInt(durationInSeconds), link, BigInt(0)], // Assuming category as text, adjust if numeric
       });
 
       await sendAndConfirmTx(transaction);
-      toast.success("Market created successfully!");
+      toast.success("Market created successfully! Submission lasts 24-48 hours before approval.");
       setOpen(false);
       setQuestion("");
       setOptionA("");
       setOptionB("");
       setLink("");
       setCategory("");
-      setEndDate(undefined);
+      setEndDate("");
     } catch (error) {
       console.error("Error creating market:", error);
       toast.error("Failed to create market.");
@@ -102,53 +99,40 @@ export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProp
             />
           </div>
           <div>
-            <Label htmlFor="link">Link</Label>
+            <Label htmlFor="link">Supporting Link</Label>
             <Input
               id="link"
               value={link}
               onChange={(e) => setLink(e.target.value)}
-              placeholder="e.g., https://example.com"
+              placeholder="e.g., https://example.com (link to support the market)"
             />
           </div>
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">General</SelectItem>
-                <SelectItem value="1">Sports</SelectItem>
-                <SelectItem value="2">Politics</SelectItem>
-                {/* Add more categories as needed */}
-              </SelectContent>
-            </Select>
+            <Input
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g., Weather"
+            />
           </div>
           <div>
-            <Label>End Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  {endDate ? formatDate(endDate, "PPP") : "Pick an end date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={endDate}
-                  onSelect={setEndDate}
-                  disabled={(date: Date) => date < new Date()}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="endDate">End Date (MM/DD/YYYY)</Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="e.g., 03/15/2025"
+              className="w-full"
+            />
           </div>
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending ? "Creating..." : "Create"}
           </Button>
+          <p className="text-sm text-gray-500">
+            Submission lasts 24-48 hours before approval.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
