@@ -1,124 +1,156 @@
-// src/components/CreatePredictionForm.tsx
-"use client";
-
+// ~/truthvotemainn/truthvotetest/src/components/CreatePredictionForm.tsx
 import { useState } from "react";
-import { useActiveAccount } from "thirdweb/react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"; // Assuming Shadcn Dialog
-import { toast } from "sonner"; // Sonner for toasts
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSendAndConfirmTransaction } from "thirdweb/react";
+import { contract } from "@/constants/contracts";
+import { prepareContractCall } from "thirdweb";
+import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format as formatDate } from "date-fns"; // Correct ESM import
 
 interface CreatePredictionFormProps {
-    open: boolean;
-    setOpen: (open: boolean) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
 export function CreatePredictionForm({ open, setOpen }: CreatePredictionFormProps) {
-    const account = useActiveAccount();
-    const [formData, setFormData] = useState({
-        question: "",
-        option1: "",
-        option2: "",
-        link: "",
-        category: "",
-    });
+  const [question, setQuestion] = useState("");
+  const [optionA, setOptionA] = useState("");
+  const [optionB, setOptionB] = useState("");
+  const [link, setLink] = useState("");
+  const [category, setCategory] = useState("");
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const { mutate: sendAndConfirmTx, isPending } = useSendAndConfirmTransaction();
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
+  const handleSubmit = async () => {
+    if (!question || !optionA || !optionB || !link || !category || !endDate) {
+      toast.error("All fields are required.");
+      return;
+    }
 
-    const handleSubmit = () => {
-        if (!formData.question || !formData.option1 || !formData.option2 || !formData.category) {
-            toast("Submission Failed", {
-                description: "Please fill in all required fields.",
-                style: { background: "#fee2e2", color: "#dc2626" },
-            });
-            return;
-        }
+    const now = new Date();
+    if (endDate <= now) {
+      toast.error("End date must be in the future.");
+      return;
+    }
 
-        const submission = {
-            ...formData,
-            submitter: account?.address || "anonymous",
-        };
-        console.log("Prediction submitted:", submission);
+    const durationInSeconds = Math.floor((endDate.getTime() - now.getTime()) / 1000);
+    if (durationInSeconds <= 0) {
+      toast.error("Duration must be positive.");
+      return;
+    }
 
-        toast("Prediction Submitted for Review", {
-            description: "Your prediction has been submitted and will be reviewed within 12-24 hours.",
-            duration: 5000,
-        });
-        setOpen(false);
-        setFormData({ question: "", option1: "", option2: "", link: "", category: "" }); // Reset form
-    };
+    try {
+      const transaction = prepareContractCall({
+        contract,
+        method: "function createMarket(string _question, string _optionA, string _optionB, uint256 _duration, string _link, uint256 _categoryId)",
+        params: [question, optionA, optionB, BigInt(durationInSeconds), link, BigInt(category)],
+      });
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Create a Prediction</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                    <div>
-                        <label htmlFor="question" className="block text-sm font-medium">Question</label>
-                        <Input
-                            id="question"
-                            name="question"
-                            value={formData.question}
-                            onChange={handleChange}
-                            placeholder="e.g., Will Bitcoin hit $100K?"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="option1" className="block text-sm font-medium">Option 1</label>
-                        <Input
-                            id="option1"
-                            name="option1"
-                            value={formData.option1}
-                            onChange={handleChange}
-                            placeholder="e.g., Yes"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="option2" className="block text-sm font-medium">Option 2</label>
-                        <Input
-                            id="option2"
-                            name="option2"
-                            value={formData.option2}
-                            onChange={handleChange}
-                            placeholder="e.g., No"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="link" className="block text-sm font-medium">Supporting Link</label>
-                        <Input
-                            id="link"
-                            name="link"
-                            value={formData.link}
-                            onChange={handleChange}
-                            placeholder="e.g., https://example.com/news"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="category" className="block text-sm font-medium">Category</label>
-                        <Input
-                            id="category"
-                            name="category"
-                            value={formData.category}
-                            onChange={handleChange}
-                            placeholder="e.g., Crypto"
-                            required
-                        />
-                    </div>
-                    <p className="text-sm text-gray-500">Approval takes 12-24 hours.</p>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit}>Submit</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+      await sendAndConfirmTx(transaction);
+      toast.success("Market created successfully!");
+      setOpen(false);
+      setQuestion("");
+      setOptionA("");
+      setOptionB("");
+      setLink("");
+      setCategory("");
+      setEndDate(undefined);
+    } catch (error) {
+      console.error("Error creating market:", error);
+      toast.error("Failed to create market.");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Prediction</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="question">Question</Label>
+            <Input
+              id="question"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="e.g., Will it rain this afternoon?"
+            />
+          </div>
+          <div>
+            <Label htmlFor="optionA">Option A</Label>
+            <Input
+              id="optionA"
+              value={optionA}
+              onChange={(e) => setOptionA(e.target.value)}
+              placeholder="e.g., Yes"
+            />
+          </div>
+          <div>
+            <Label htmlFor="optionB">Option B</Label>
+            <Input
+              id="optionB"
+              value={optionB}
+              onChange={(e) => setOptionB(e.target.value)}
+              placeholder="e.g., No"
+            />
+          </div>
+          <div>
+            <Label htmlFor="link">Link</Label>
+            <Input
+              id="link"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="e.g., https://example.com"
+            />
+          </div>
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">General</SelectItem>
+                <SelectItem value="1">Sports</SelectItem>
+                <SelectItem value="2">Politics</SelectItem>
+                {/* Add more categories as needed */}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>End Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  {endDate ? formatDate(endDate, "PPP") : "Pick an end date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  disabled={(date: Date) => date < new Date()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <Button onClick={handleSubmit} disabled={isPending}>
+            {isPending ? "Creating..." : "Create"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
