@@ -13,23 +13,7 @@ import { readContract } from "thirdweb";
 
 const API_URL = process.env.NODE_ENV === "development" ? "http://localhost:3001/banner" : "/api/banner";
 
-export async function getServerSideProps() {
-  try {
-    const response = await fetch("https://truth-vote.vercel.app/api/banner");
-    if (!response.ok) throw new Error("Failed to fetch banner");
-    const data = await response.json();
-    return {
-      props: { initialBanner: data.banner },
-    };
-  } catch (error) {
-    console.error("SSR fetch banner error:", error);
-    return {
-      props: { initialBanner: "/assets/banner1.png" },
-    };
-  }
-}
-
-export function TruthVoteDashboard({ initialBanner }: { initialBanner: string }) { // Add type here
+export function TruthVoteDashboard({ initialBanner }: { initialBanner: string }) {
   const { data: marketCount, isLoading: isLoadingMarketCount } = useReadContract({
     contract,
     method: "function marketCount() view returns (uint256)",
