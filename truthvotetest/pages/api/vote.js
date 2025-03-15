@@ -1,12 +1,14 @@
 // ~/truthvotemainn/truthvotetest/pages/api/vote.js
-import { Pool } from "pg"; // Change to ES6 import
+import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export default async function handler(req, res) {
+  console.log("DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Missing"); // Debug log
   if (req.method === "GET") {
     try {
       const { rows } = await pool.query("SELECT * FROM votes");
+      console.log("Fetched votes:", rows); // Debug log
       const votes = {};
       rows.forEach(row => {
         votes[row.market_id] = votes[row.market_id] || {};
@@ -28,6 +30,7 @@ export default async function handler(req, res) {
         [marketId, address, option]
       );
       const { rows } = await pool.query("SELECT * FROM votes");
+      console.log("Saved vote, current votes:", rows); // Debug log
       const votes = {};
       rows.forEach(row => {
         votes[row.market_id] = votes[row.market_id] || {};
