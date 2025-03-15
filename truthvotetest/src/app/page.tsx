@@ -1,22 +1,21 @@
 // ~/truthvotemainn/truthvotetest/src/app/page.tsx
 import { TruthVoteDashboard } from "../components/tvdashboard";
 
-export async function getServerSideProps() {
+async function fetchInitialBanner() {
   try {
-    const response = await fetch("https://truth-vote.vercel.app/api/banner");
+    const response = await fetch("https://truth-vote.vercel.app/api/banner", {
+      cache: "no-store", // Ensure fresh data
+    });
     if (!response.ok) throw new Error("Failed to fetch banner");
     const data = await response.json();
-    return {
-      props: { initialBanner: data.banner },
-    };
+    return data.banner;
   } catch (error) {
-    console.error("SSR fetch banner error:", error);
-    return {
-      props: { initialBanner: "/assets/banner1.png" },
-    };
+    console.error("Fetch banner error:", error);
+    return "/assets/banner1.png";
   }
 }
 
-export default function Page({ initialBanner }: { initialBanner: string }) {
+export default async function Page() {
+  const initialBanner = await fetchInitialBanner();
   return <TruthVoteDashboard initialBanner={initialBanner} />;
 }
