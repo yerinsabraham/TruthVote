@@ -1,4 +1,3 @@
-// ~/truthvotemainn/truthvotetest/src/components/marketcard.tsx
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { contract } from "@/constants/contracts";
@@ -39,9 +38,9 @@ interface StakeBalance {
 
 const VOTE_API_URL = process.env.NODE_ENV === "development" ? "http://localhost:3001/vote" : "/api/vote";
 const ADMIN_ADDRESSES = [
-  "0x50864E907632D310D19280bD972ceC1d5b2fbBf3",
-  "0x82C002854d3de56b2089d0FD6346fFEF33e10c95",
-  "0x0CAfc81A92d4c7a6ebeef6ECB3B1596b1e65db08",
+  "0x50864e907632d310d19280bd972cec1d5b2fbbf3",
+  "0x82c002854d3de56b2089d0fd6346ffef33e10c95",
+  "0x0cafc81a92d4c7a6ebeef6ecb3b1596b1e65db08",
 ];
 
 export function MarketCard({ index, filter, selectedCategory, categories }: MarketCardProps) {
@@ -120,13 +119,15 @@ export function MarketCard({ index, filter, selectedCategory, categories }: Mark
   useEffect(() => {
     if (!market) return;
 
-    console.log(`Market ${index}:`, {
+    console.log(`Market ${index} Debug:`, {
+      question: market.question,
       isExpired,
       isResolved,
       endTime: Number(market.endTime),
       currentTime: Math.floor(Date.now() / 1000),
       address,
-      isAdmin: ADMIN_ADDRESSES.includes(address),
+      isAdmin: address && ADMIN_ADDRESSES.includes(address.toLowerCase()),
+      walletConnected: !!address,
     });
 
     const marketVotes = votes[index] || {};
@@ -206,17 +207,26 @@ export function MarketCard({ index, filter, selectedCategory, categories }: Mark
   };
 
   const handleResolve = async (outcome: boolean) => {
-    if (!address) return;
+    if (!address) {
+      alert("Please connect wallet to resolve market");
+      return;
+    }
     try {
       const response = await fetch("/api/resolve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ marketId: index.toString(), outcome, address }),
       });
-      if (!response.ok) throw new Error("Failed to resolve market");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to resolve market: ${errorData.error || response.status}`);
+      }
       setMarketOutcome(outcome);
-    } catch (error) {
+      console.log(`Market ${index} resolved as ${outcome ? market?.optionA : market?.optionB}`);
+    } catch (error: unknown) {
       console.error("Error resolving market:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      alert(`Error resolving market: ${errorMessage}`);
     }
   };
 
@@ -351,7 +361,7 @@ export function MarketCard({ index, filter, selectedCategory, categories }: Mark
                 )}
                 {mode === "vote" && hasVoted && address && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-2 text-center">
+                    <p className="mt-2 text-sm text-gray-500 text-center">
                       You voted <span className="font-bold">{votes[index]?.[address] === "yes" ? market.optionA : market.optionB}</span>
                     </p>
                     <Button
@@ -376,22 +386,25 @@ export function MarketCard({ index, filter, selectedCategory, categories }: Mark
                 <>
                   <MarketPending />
                   {address && ADMIN_ADDRESSES.includes(address.toLowerCase()) ? (
-                    <div className="mt-4 flex justify-between gap-4">
-                      <Button
-                        className="flex-1"
-                        onClick={() => handleResolve(true)}
-                        disabled={!address}
-                      >
-                        {`Resolve as ${market.optionA}`}
-                      </Button>
-                      <Button
-                        className="flex-1"
-                        onClick={() => handleResolve(false)}
-                        disabled={!address}
-                      >
-                        {`Resolve as ${market.optionB}`}
-                      </Button>
-                    </div>
+                    <>
+                      <div className="mt-4 flex justify-between gap-4">
+                        <Button
+                          className="flex-1"
+                          onClick={() => handleResolve(true)}
+                          disabled={!address}
+                        >
+                          {`Resolve as ${market.optionA}`}
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => handleResolve(false)}
+                          disabled={!address}
+                        >
+                          {`Resolve as ${market.optionB}`}
+                        </Button>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500">Admin: Resolve market by selecting an option</p>
+                    </>
                   ) : (
                     <p className="mt-4 text-sm text-gray-500">Waiting for admin resolution</p>
                   )}
