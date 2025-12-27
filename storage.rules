@@ -1,0 +1,58 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check file size (max 2MB for avatars, 5MB for poll images)
+    function isValidSize(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
+    }
+    
+    // Helper function to check image file type
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // User avatars
+    match /avatars/{userId}/{fileName} {
+      // Anyone can read avatars
+      allow read: if true;
+      // Users can upload their own avatar (max 2MB, images only)
+      allow create, update: if isAuthenticated() 
+                            && request.auth.uid == userId
+                            && isImage()
+                            && isValidSize(2);
+      // Users can delete their own avatar
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Poll images (authenticated users can upload during creation)
+    match /polls/{pollId}/{fileName} {
+      // Anyone can read poll images (public CDN access)
+      allow read: if true;
+      // Authenticated users can upload poll images (max 5MB, images only)
+      // Admin verification happens in application layer
+      allow create, update: if isAuthenticated()
+                            && isImage()
+                            && isValidSize(5);
+      // Only authenticated users can delete poll images
+      allow delete: if isAuthenticated();
+    }
+    
+    // Banner images (admin only)
+    match /banners/{fileName} {
+      // Anyone can read banners
+      allow read: if true;
+      // Only authenticated users can upload banners (admin check in app)
+      allow create, update: if isAuthenticated()
+                            && isImage()
+                            && isValidSize(5);
+      // Only authenticated users can delete banners
+      allow delete: if isAuthenticated();
+    }
+  }
+}

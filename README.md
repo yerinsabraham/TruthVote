@@ -1,47 +1,80 @@
-## Getting Started
+# TruthVote - Prediction Platform
 
-Create a project using this example:
+A modern prediction and voting platform built with Next.js 15, Firebase, and TypeScript. Users make predictions on binary outcomes, earn points for accuracy, and compete on leaderboards.
+
+## 🚀 Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **UI Components:** Radix UI
+- **Backend:** Firebase (Auth, Firestore, Storage)
+- **Deployment:** Vercel or Firebase Hosting
+
+## 📦 Installation
 
 ```bash
-npx thirdweb create --contract --template forge-starter
+# Install dependencies
+npm install
+
+# Create environment file
+cp .env.local.example .env.local
+
+# Edit .env.local with your Firebase credentials
 ```
 
-You can start editing the page by modifying `contracts/Contract.sol`.
+## 🔧 Firebase Setup
 
-To add functionality to your contracts, you can use the `@thirdweb-dev/contracts` package which provides base contracts and extensions to inherit. The package is already installed with this project. Head to our [Contracts Extensions Docs](https://portal.thirdweb.com/thirdweb-deploy/contract-extensions) to learn more.
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable Authentication (Email/Password)
+3. Create Firestore database
+4. Create Storage bucket
+5. Copy your Firebase config to `.env.local`
 
-## Building the project
+## 🏃 Development
 
-After any changes to the contract, run:
+```bash
+# Run development server
+npm run dev
 
+# Open http://localhost:3000
+```
+
+## 🚢 Deployment
+
+### Option A: Vercel (Recommended)
+```bash
+npm i -g vercel
+vercel
+```
+
+### Option B: Firebase Hosting
 ```bash
 npm run build
-# or
-yarn build
+firebase deploy --only hosting
 ```
 
-to compile your contracts. This will also detect the [Contracts Extensions Docs](https://portal.thirdweb.com/thirdweb-deploy/contract-extensions) detected on your contract.
+## 📚 Project Structure
 
-## Deploying Contracts
-
-When you're ready to deploy your contracts, just run one of the following command to deploy you're contracts:
-
-```bash
-npm run deploy
-# or
-yarn deploy
+```
+src/
+├── app/              # Next.js App Router pages
+├── components/       # React components
+├── context/          # React Context providers
+├── hooks/            # Custom React hooks
+├── lib/              # Utilities and Firebase config
+└── types/            # TypeScript type definitions
 ```
 
-## Releasing Contracts
+## 🔐 Environment Variables
 
-If you want to release a version of your contracts publicly, you can use one of the followings command:
+See `.env.local.example` for required variables.
 
-```bash
-npm run release
-# or
-yarn release
-```
+## 📖 Documentation
 
-## Join our Discord!
+- [PROJECT_AUDIT.md](../PROJECT_AUDIT.md) - Analysis of original MVP
+- [TRUTHVOTE_SPEC.md](../TRUTHVOTE_SPEC.md) - Technical specification
 
-For any questions, suggestions, join our discord at [https://discord.gg/thirdweb](https://discord.gg/thirdweb).
+## 📄 License
+
+MIT

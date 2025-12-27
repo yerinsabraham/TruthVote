@@ -1,0 +1,93 @@
+/* Mobile responsiveness improvements */
+
+/* Ensure cards are responsive */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Poll cards */
+  .space-y-4 > * {
+    margin-bottom: 1rem;
+  }
+
+  /* Buttons and interactive elements */
+  button, .button {
+    min-height: 44px; /* Touch-friendly size */
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem; /* Smaller text on mobile */
+  }
+
+  /* Forms */
+  input, select, textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 44px;
+    padding: 0.625rem 0.75rem;
+  }
+
+  /* Grid layouts */
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Text sizes */
+  h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  /* Card padding */
+  .card {
+    padding: 1rem;
+  }
+
+  /* Modal/Dialog */
+  .dialog-content {
+    max-width: calc(100vw - 2rem);
+    margin: 1rem;
+  }
+
+  /* Tables */
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* Text wrapping */
+  .break-words {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Stack elements vertically */
+  .flex-row-mobile {
+    flex-direction: column;
+  }
+
+  /* Full width on small screens */
+  .w-auto-mobile {
+    width: 100%;
+  }
+}

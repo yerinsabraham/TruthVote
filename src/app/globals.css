@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Light theme (Kalshi-like professional palette) */
+@theme {
+  --color-background: #FFFFFF;
+  --color-foreground: #111827;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111827;
+  --color-primary: #00649c; /* official brand color */
+  --color-success: #059669; /* keep green */
+  --color-danger: #DC2626; /* strong red */
+  --color-warning: #F59E0B;
+  --color-muted: #6B7280;
+  --color-border: #E5E7EB;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom utility classes */
+.gradient-green {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.gradient-red {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+.card-elevated {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.card-elevated:hover {
+  box-shadow: 0 12px 30px rgba(16,24,40,0.10);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, #0076a3, #60A5FA);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Line clamp utilities for text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
