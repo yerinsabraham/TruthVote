@@ -9,7 +9,10 @@
     "lint": "eslint",
     "export": "next build && next export",
     "deploy": "npm run build && firebase deploy --only hosting",
-    "deploy:all": "npm run build && firebase deploy"
+    "deploy:all": "npm run build && firebase deploy",
+    "seed": "tsx scripts/seedData.ts",
+    "clear-votes": "tsx scripts/clearVotes.ts",
+    "clear-all": "tsx scripts/clearAllData.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
