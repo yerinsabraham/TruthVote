@@ -1,7 +1,7 @@
 // src/hooks/useFollow.ts
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, setDoc, deleteDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/context/AuthContext';
@@ -13,22 +13,22 @@ export function useFollow(targetUserId: string) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!user || !targetUserId || user.uid === targetUserId) return;
+
+      try {
+        const followId = `${user.uid}_${targetUserId}`;
+        const followDoc = await getDoc(doc(db, 'follows', followId));
+        setIsFollowing(followDoc.exists());
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+      }
+    };
+
     checkFollowStatus();
   }, [user, targetUserId]);
 
-  const checkFollowStatus = async () => {
-    if (!user || !targetUserId || user.uid === targetUserId) return;
-
-    try {
-      const followId = `${user.uid}_${targetUserId}`;
-      const followDoc = await getDoc(doc(db, 'follows', followId));
-      setIsFollowing(followDoc.exists());
-    } catch (error) {
-      console.error('Error checking follow status:', error);
-    }
-  };
-
-  const toggleFollow = async () => {
+  const toggleFollow = useCallback(async () => {
     if (!user) {
       toast.error('Please sign in to follow users');
       return;
@@ -57,7 +57,6 @@ export function useFollow(targetUserId: string) {
         });
 
         setIsFollowing(false);
-        toast.success('Unfollowed');
       } else {
         // Follow
         await setDoc(followRef, {
@@ -75,14 +74,13 @@ export function useFollow(targetUserId: string) {
         });
 
         setIsFollowing(true);
-        toast.success('Followed!');
       }
     } catch (error: any) {
       toast.error('Failed to update follow status: ' + error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, targetUserId, isFollowing]);
 
   return { isFollowing, loading, toggleFollow };
 }

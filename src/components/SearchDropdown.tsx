@@ -4,6 +4,36 @@ import { useState, useEffect, useRef } from 'react';
 import { usePredictions } from '@/hooks/usePredictions';
 import { useCategories } from '@/hooks/useCategories';
 import Link from 'next/link';
+import { 
+  Landmark, 
+  Trophy, 
+  Tv, 
+  Cpu, 
+  DollarSign, 
+  FlaskConical, 
+  Globe,
+  Briefcase,
+  Heart,
+  GraduationCap,
+  Gamepad2,
+  Mountain
+} from 'lucide-react';
+
+// Map category names to icons
+const categoryIcons: Record<string, any> = {
+  'Politics': Landmark,
+  'Sports': Trophy,
+  'Entertainment': Tv,
+  'Technology': Cpu,
+  'Finance': DollarSign,
+  'Science': FlaskConical,
+  'World': Globe,
+  'Business': Briefcase,
+  'Health': Heart,
+  'Education': GraduationCap,
+  'Gaming': Gamepad2,
+  'Environment': Mountain,
+};
 
 interface SearchDropdownProps {
   searchQuery: string;
@@ -116,24 +146,27 @@ export function SearchDropdown({ searchQuery, onSearchChange, isOpen, onClose }:
                     Categories
                   </h3>
                   <div className="space-y-1">
-                    {filteredCategories.map(category => (
-                      <button
-                        key={category.id}
-                        onClick={() => {
-                          onSearchChange('');
-                          onClose();
-                          // Scroll to top and filter by category
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg text-sm transition-colors flex items-center gap-3"
-                      >
-                        <span className="text-xl">{category.icon}</span>
-                        <div>
-                          <div className="font-medium text-foreground">{category.name}</div>
-                          <div className="text-xs text-muted-foreground">{category.predictionCount} predictions</div>
-                        </div>
-                      </button>
-                    ))}
+                    {filteredCategories.map(category => {
+                      const IconComponent = categoryIcons[category.name] || Landmark;
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            onSearchChange('');
+                            onClose();
+                            // Scroll to top and filter by category
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg text-sm transition-colors flex items-center gap-3"
+                        >
+                          <IconComponent className="w-5 h-5 text-foreground flex-shrink-0" strokeWidth={2} />
+                          <div>
+                            <div className="font-medium text-foreground">{category.name}</div>
+                            <div className="text-xs text-muted-foreground">{category.predictionCount} predictions</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

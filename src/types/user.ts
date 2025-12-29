@@ -1,5 +1,6 @@
 // src/types/user.ts
 import { Timestamp } from 'firebase/firestore';
+import { Rank } from './rank';
 
 export interface User {
   id: string;
@@ -14,6 +15,16 @@ export interface User {
   role: 'user' | 'admin';
   createdAt: Timestamp;
   lastActive: Timestamp;
+  
+  // TruthRank fields
+  currentRank: Rank;
+  rankPercentage: number;
+  totalResolvedPredictions: number;
+  contrarianWinsCount: number;
+  weeklyActivityCount: number;
+  inactivityStreaks: number;
+  currentRankStartDate: string; // ISO 8601 UTC
+  lastRankUpdateAt: string; // ISO 8601 UTC
 }
 
 export interface UserProfile {
@@ -25,6 +36,10 @@ export interface UserProfile {
   totalVotes: number;
   correctPredictions: number;
   accuracy: number;
+  
+  // TruthRank fields for profile display
+  currentRank: Rank;
+  rankPercentage: number;
 }
 
 export interface LeaderboardEntry {
@@ -35,4 +50,8 @@ export interface LeaderboardEntry {
   accuracy: number;
   totalVotes: number;
   rank: number;
+  
+  // TruthRank fields for leaderboards
+  currentRank: Rank;
+  rankPercentage: number;
 }

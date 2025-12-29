@@ -9,25 +9,38 @@ export interface Prediction {
   id: string;
   question: string;
   description?: string;
-  optionA: string;
-  optionB: string;
-  voteCountA: number;
-  voteCountB: number;
+  options?: Array<{ id: string; label: string; votes: number }>;
   category: string;
+  categoryId?: string;
   subcategory?: string;
-  tags: string[];
+  tags?: string[];
   createdBy: string;
-  creatorName: string;
-  status: 'pending' | 'active' | 'resolved' | 'cancelled';
+  creatorName?: string;
+  status: 'draft' | 'scheduled' | 'active' | 'closed' | 'resolved' | 'pending' | 'cancelled';
   createdAt: Timestamp;
-  startDate: Timestamp;
-  endDate: Timestamp;
+  startTime?: Timestamp;
+  endTime: Timestamp;
+  startDate?: Timestamp; // Legacy
+  endDate?: Timestamp; // Legacy
+  resolutionTime?: Timestamp;
   resolvedAt?: Timestamp;
+  resolved?: boolean;
+  winningOption?: string | null;
   resolvedOption?: 'A' | 'B' | 'cancelled';
   isApproved: boolean;
-  isFeatured: boolean;
-  viewCount: number;
+  published?: boolean;
+  isFeatured?: boolean;
+  viewCount?: number;
+  totalVotes?: number;
   imageUrl?: string;
+  sourceLink?: string;
+  displayTemplate?: string;
+  
+  // Legacy fields for backward compatibility
+  optionA?: string;
+  optionB?: string;
+  voteCountA?: number;
+  voteCountB?: number;
 }
 
 export function usePredictions(status?: 'pending' | 'active' | 'resolved') {
@@ -39,20 +52,11 @@ export function usePredictions(status?: 'pending' | 'active' | 'resolved') {
     try {
       const predictionsRef = collection(db, 'predictions');
       
+      // Simplified query - just get all predictions ordered by creation date
       let q = query(
         predictionsRef,
-        where('isApproved', '==', true),
         orderBy('createdAt', 'desc')
       );
-
-      if (status) {
-        q = query(
-          predictionsRef,
-          where('isApproved', '==', true),
-          where('status', '==', status),
-          orderBy('createdAt', 'desc')
-        );
-      }
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({
@@ -60,7 +64,16 @@ export function usePredictions(status?: 'pending' | 'active' | 'resolved') {
           ...doc.data()
         })) as Prediction[];
         
-        setPredictions(data);
+        // Filter for approved predictions or predictions without isApproved field (legacy)
+        // If isApproved is undefined, treat as approved for backward compatibility
+        const approved = data.filter(p => p.isApproved !== false);
+        
+        // If status filter is provided, apply it
+        const filtered = status 
+          ? approved.filter(p => p.status === status)
+          : approved;
+        
+        setPredictions(filtered);
         setLoading(false);
       }, (err) => {
         console.error('Error fetching predictions:', err);

@@ -3,7 +3,6 @@
 import { Dashboard } from "@/components/Dashboard";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useState } from "react";
 
 export default function Home() {
@@ -18,7 +17,6 @@ export default function Home() {
         </div>
       </main>
       <Footer />
-      <MobileBottomNav />
     </div>
   );
 }

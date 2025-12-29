@@ -1,18 +1,18 @@
 // src/hooks/useVote.ts
 'use client';
 
-import { useState } from 'react';
-import { doc, setDoc, getDoc, updateDoc, increment, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { checkAndAwardBadges, getBadgeInfo } from '@/lib/badges';
+import { votesService } from '@/services';
+import { getBadgeInfo } from '@/lib/badges';
 
 export function useVote() {
   const [loading, setLoading] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
   const { user } = useAuth();
 
-  const submitVote = async (predictionId: string, option: string, predictionQuestion: string, predictionCategory: string) => {
+  const submitVote = useCallback(async (predictionId: string, option: string, predictionQuestion: string, predictionCategory: string) => {
     if (!user) {
       toast.error('Please sign in to vote');
       return false;
@@ -20,80 +20,22 @@ export function useVote() {
 
     setLoading(true);
     try {
-      // Check if user already voted
-      const voteId = `${user.uid}_${predictionId}`;
-      const voteRef = doc(db, 'votes', voteId);
-      const voteDoc = await getDoc(voteRef);
+      // Use service layer instead of direct Firebase
+      const result = await votesService.submitVote(
+        predictionId,
+        user.uid,
+        option,
+        predictionQuestion,
+        predictionCategory
+      );
 
-      if (voteDoc.exists()) {
-        toast.error('You have already voted on this prediction');
+      if (!result.success) {
+        toast.error(result.message || 'Failed to submit vote');
         setLoading(false);
         return false;
       }
 
-      // Create vote document
-      await setDoc(voteRef, {
-        predictionId,
-        userId: user.uid,
-        option,
-        votedAt: Timestamp.now(),
-        predictionQuestion,
-        predictionCategory,
-      });
-
-      // Update prediction vote counts
-      const predictionRef = doc(db, 'predictions', predictionId);
-      const predictionDoc = await getDoc(predictionRef);
-      const predictionData = predictionDoc.data();
-      
-      // Support new options array format
-      if (predictionData?.options) {
-        const optionIndex = predictionData.options.findIndex((opt: any) => opt.id === option);
-        if (optionIndex !== -1) {
-          const updatedOptions = [...predictionData.options];
-          updatedOptions[optionIndex].votes = (updatedOptions[optionIndex].votes || 0) + 1;
-          await updateDoc(predictionRef, {
-            options: updatedOptions,
-            totalVotes: increment(1)
-          });
-        }
-      } else {
-        // Legacy format support
-        const updateField = option === 'A' ? 'voteCountA' : 'voteCountB';
-        await updateDoc(predictionRef, {
-          [updateField]: increment(1),
-        });
-      }
-
-      // Update user total votes
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        totalVotes: increment(1),
-      });
-
-      // Check and award badges
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const newBadges = await checkAndAwardBadges(user.uid, {
-          totalVotes: userData.totalVotes || 0,
-          correctVotes: userData.correctVotes || 0,
-          accuracyRate: userData.accuracyRate || 0,
-          currentBadges: userData.badges || []
-        });
-
-        // Show badge notifications
-        if (newBadges.length > 0) {
-          newBadges.forEach(badgeId => {
-            const badge = getBadgeInfo(badgeId);
-            if (badge) {
-              toast.success(`🎉 Badge earned: ${badge.icon} ${badge.name}!`, { duration: 5000 });
-            }
-          });
-        }
-      }
-
-      toast.success('Vote submitted successfully!');
+      setHasVoted(true);
       setLoading(false);
       return true;
     } catch (error: any) {
@@ -102,46 +44,38 @@ export function useVote() {
       setLoading(false);
       return false;
     }
-  };
+  }, [user]);
 
-  const checkUserVote = async (predictionId: string): Promise<'A' | 'B' | null> => {
+  const checkUserVote = useCallback(async (predictionId: string): Promise<'A' | 'B' | null> => {
     if (!user) return null;
 
     try {
-      const voteId = `${user.uid}_${predictionId}`;
-      const voteRef = doc(db, 'votes', voteId);
-      const voteDoc = await getDoc(voteRef);
-
-      if (voteDoc.exists()) {
-        return voteDoc.data().option as 'A' | 'B';
-      }
-      return null;
+      // Use service layer instead of direct Firebase
+      const option = await votesService.getUserVote(predictionId, user.uid);
+      return option as 'A' | 'B' | null;
     } catch (error) {
       console.error('Error checking vote:', error);
       return null;
     }
-  };
+  }, [user]);
 
-  const getUserVotes = async () => {
+  const getUserVotes = useCallback(async () => {
     if (!user) return [];
 
     try {
-      const { collection, query, where, getDocs } = await import('firebase/firestore');
-      const votesRef = collection(db, 'votes');
-      const q = query(votesRef, where('userId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        predictionId: doc.data().predictionId,
-        option: doc.data().option,
-        votedAt: doc.data().votedAt,
+      // Use service layer instead of direct Firebase
+      const votes = await votesService.getUserVotes(user.uid);
+      return votes.map(vote => ({
+        id: vote.id,
+        predictionId: vote.predictionId,
+        option: vote.option,
+        votedAt: vote.votedAt,
       }));
     } catch (error) {
       console.error('Error getting user votes:', error);
       return [];
     }
-  };
+  }, [user]);
 
-  return { submitVote, checkUserVote, getUserVotes, loading };
+  return { submitVote, checkUserVote, getUserVotes, loading, hasVoted, setHasVoted };
 }

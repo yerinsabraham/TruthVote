@@ -71,3 +71,22 @@ body {
   overflow: hidden;
 }
 
+/* Text shadow for better readability on colored backgrounds */
+.text-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for winner indicator */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+

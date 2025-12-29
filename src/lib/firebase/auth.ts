@@ -34,20 +34,26 @@ export async function signUp(email: string, password: string, displayName: strin
       authProvider: 'email',
       bio: '',
       points: 0,
+      totalPoints: 0,
       totalVotes: 0,
+      totalPredictions: 0,
+      correctPredictions: 0,
       correctVotes: 0,
       accuracyRate: 0,
       role: 'user',
-      isVerified: false, // Will be true after email verification
+      isVerified: false,
       canCreatePolls: false,
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
       country: '',
       followersCount: 0,
       followingCount: 0,
       badges: [],
       streak: 0,
-      level: 1
+      level: 1,
+      rank: 'novice',
+      rankPercentage: 0
     });
     
     return user;
@@ -105,24 +111,31 @@ export async function signInWithGoogle() {
         authProvider: 'google',
         bio: '',
         points: 0,
+        totalPoints: 0,
         totalVotes: 0,
+        totalPredictions: 0,
+        correctPredictions: 0,
         correctVotes: 0,
         accuracyRate: 0,
         role: 'user',
-        isVerified: true, // Google accounts are pre-verified
+        isVerified: true,
         canCreatePolls: false,
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
         followersCount: 0,
         followingCount: 0,
         badges: [],
         streak: 0,
-        level: 1
+        level: 1,
+        rank: 'novice',
+        rankPercentage: 0
       });
     } else {
-      // Update last login
+      // Update last login and last active
       await updateDoc(doc(db, 'users', user.uid), {
-        lastLoginAt: serverTimestamp()
+        lastLoginAt: serverTimestamp(),
+        lastActive: serverTimestamp()
       });
     }
     
@@ -153,24 +166,31 @@ export async function signInWithApple() {
         authProvider: 'apple',
         bio: '',
         points: 0,
+        totalPoints: 0,
         totalVotes: 0,
+        totalPredictions: 0,
+        correctPredictions: 0,
         correctVotes: 0,
         accuracyRate: 0,
         role: 'user',
-        isVerified: true, // Apple accounts are pre-verified
+        isVerified: true,
         canCreatePolls: false,
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
         followersCount: 0,
         followingCount: 0,
         badges: [],
         streak: 0,
-        level: 1
+        level: 1,
+        rank: 'novice',
+        rankPercentage: 0
       });
     } else {
-      // Update last login
+      // Update last login and last active
       await updateDoc(doc(db, 'users', user.uid), {
-        lastLoginAt: serverTimestamp()
+        lastLoginAt: serverTimestamp(),
+        lastActive: serverTimestamp()
       });
     }
     

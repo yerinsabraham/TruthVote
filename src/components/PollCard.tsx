@@ -35,11 +35,13 @@ interface PollCardProps {
     winningOption?: string;
     imageUrl?: string;
     commentCount?: number;
+    displayTemplate?: 'two-option-horizontal' | 'three-option-horizontal' | 'multi-yes-no' | 'multi-option-horizontal';
   };
   onVote?: (pollId: string, option: string) => Promise<boolean>;
+  isCompact?: boolean; // When true, shows only top 2 options for multi-yes-no template
 }
 
-export function PollCard({ poll, onVote }: PollCardProps) {
+export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
@@ -58,6 +60,7 @@ export function PollCard({ poll, onVote }: PollCardProps) {
   }));
   
   const isBinary = pollOptions.length === 2;
+  const displayTemplate = poll.displayTemplate || (isBinary ? 'two-option-horizontal' : 'multi-yes-no');
   
   useEffect(() => {
     const loadUserVote = async () => {
@@ -153,7 +156,7 @@ export function PollCard({ poll, onVote }: PollCardProps) {
   
   // Calculate highest probability for color coding
   const highestPercentage = Math.max(...pollOptions.map(opt => getPercentage(opt.votes)));
-  const minVoteThreshold = 10; // Hide probability if less than 10 votes
+  const minVoteThreshold = 1; // Show probability as soon as there's at least 1 vote
   const showProbability = totalVotes >= minVoteThreshold;
   
   const getProbabilityColor = (percentage: number) => {
@@ -190,8 +193,8 @@ export function PollCard({ poll, onVote }: PollCardProps) {
                   />
                 </div>
               ) : (
-                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-md ${getCategoryColor(poll.category)} flex items-center justify-center text-sm font-bold`}>
-                  {poll.category.charAt(0)}
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-md ${getCategoryColor(poll.category || 'General')} flex items-center justify-center text-sm font-bold`}>
+                  {(poll.category || 'General').charAt(0)}
                 </div>
               )}
             </div>
@@ -269,9 +272,9 @@ export function PollCard({ poll, onVote }: PollCardProps) {
       </Link>
         
         <CardContent className="space-y-3 px-4 sm:px-6 pt-3 flex-1 flex flex-col">
-          {/* BINARY LAYOUT - Horizontal Side-by-Side with Progress Bars */}
-          {isBinary && (
-            <div className="grid grid-cols-2 gap-2">
+          {/* TEMPLATE 1: TWO-OPTION HORIZONTAL - Side-by-Side with Progress Bars */}
+          {displayTemplate === 'two-option-horizontal' && (
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 poll-buttons-horizontal">
               {pollOptions.map((option, index) => {
                 const percentage = getPercentage(option.votes);
                 const isSelected = selectedOption === option.id;
@@ -287,39 +290,74 @@ export function PollCard({ poll, onVote }: PollCardProps) {
                       handleVote(option.id);
                     }}
                     disabled={loading || (!!selectedOption && selectedOption !== option.id)}
-                    className={`relative h-10 sm:h-11 px-3 font-bold text-sm rounded-lg transition-all overflow-hidden border-2 ${
+                    className={`relative h-12 sm:h-14 px-4 font-bold text-sm sm:text-base rounded-xl transition-all overflow-hidden border-2 ${
                       isYes 
-                        ? 'border-green-600/50 text-green-900' 
-                        : 'border-red-600/50 text-red-900'
+                        ? 'border-green-500 text-green-900 hover:border-green-600 bg-white' 
+                        : 'border-red-500 text-red-900 hover:border-red-600 bg-white'
                     } ${
-                      isSelected ? 'ring-2 ring-primary ring-offset-1 opacity-100' : selectedOption ? 'opacity-60' : 'opacity-100'
+                      isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
                     } ${
-                      isWinner ? 'ring-2 ring-success ring-offset-1' : ''
+                      isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
                     }`}
                     variant="outline"
                   >
-                    {/* Progress bar background */}
+                    {/* Progress bar background - same color as border */}
                     <div 
-                      className={`absolute inset-0 transition-all duration-500 ${
-                        isYes ? 'bg-green-600/50' : 'bg-red-600/50'
+                      className={`absolute inset-0 transition-all duration-700 ease-out ${
+                        isYes 
+                          ? 'bg-green-500' 
+                          : 'bg-red-500'
                       }`}
                       style={{ width: `${percentage}%` }}
                     />
-                    {/* Button text */}
-                    <span className="relative z-10">{option.label}</span>
+                    {/* Button content */}
+                    <div className="relative z-10 flex items-center justify-between w-full">
+                      <span className="font-bold">{option.label}</span>
+                      {totalVotes > 0 && (
+                        <span className="text-xs sm:text-sm font-bold text-white bg-black/30 px-2 py-0.5 rounded-md">
+                          {percentage.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                   </Button>
                 );
               })}
             </div>
           )}
 
-          {/* MULTI-OPTION LAYOUT - Vertical List with Progress Bars */}
-          {!isBinary && (
-            <div className="space-y-2">
+          {/* TEMPLATE 2: THREE-OPTION HORIZONTAL - With Smaller Middle Button */}
+          {displayTemplate === 'three-option-horizontal' && (
+            <div className="flex gap-2 sm:gap-3 poll-buttons-horizontal">
               {pollOptions.map((option, index) => {
                 const percentage = getPercentage(option.votes);
                 const isSelected = selectedOption === option.id;
                 const isWinner = winningOptionId === option.id;
+                const isTieOption = index === 1 || option.label.toLowerCase().includes('tie') || option.label.toLowerCase().includes('draw');
+                
+                // Color scheme for three options - solid colors, border and progress match
+                // Blue (positive/Team A), Gray (tie/neutral), Green (positive/Team B)
+                const getColorScheme = () => {
+                  if (index === 0) return { 
+                    border: 'border-blue-500', 
+                    bg: 'bg-blue-500', 
+                    text: 'text-blue-900',
+                    hover: 'hover:border-blue-600'
+                  };
+                  if (isTieOption) return { 
+                    border: 'border-gray-500', 
+                    bg: 'bg-gray-500', 
+                    text: 'text-gray-900',
+                    hover: 'hover:border-gray-600'
+                  };
+                  return { 
+                    border: 'border-green-500', 
+                    bg: 'bg-green-500', 
+                    text: 'text-green-900',
+                    hover: 'hover:border-green-600'
+                  };
+                };
+                
+                const colors = getColorScheme();
                 
                 return (
                   <Button
@@ -330,24 +368,219 @@ export function PollCard({ poll, onVote }: PollCardProps) {
                       handleVote(option.id);
                     }}
                     disabled={loading || (!!selectedOption && selectedOption !== option.id)}
-                    className={`relative w-full h-auto py-2.5 px-4 overflow-hidden rounded-lg text-left justify-start transition-all ${
-                      isSelected ? 'ring-2 ring-primary ring-offset-1 opacity-100' : selectedOption ? 'opacity-60' : 'opacity-100'
+                    className={`relative h-12 sm:h-14 px-2 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition-all overflow-hidden border-2 bg-white ${
+                      colors.border
                     } ${
-                      isWinner ? 'ring-2 ring-success ring-offset-1' : ''
+                      colors.text
+                    } ${
+                      colors.hover
+                    } ${
+                      isTieOption ? 'w-20 sm:w-24 flex-shrink-0' : 'flex-1'
+                    } ${
+                      isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
+                    } ${
+                      isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
                     }`}
-                    variant={isSelected || isWinner ? 'default' : 'outline'}
+                    variant="outline"
                   >
                     {/* Progress bar background */}
                     <div 
-                      className="absolute inset-0 bg-primary/10 transition-all duration-500"
+                      className={`absolute inset-0 transition-all duration-700 ease-out ${colors.bg}`}
                       style={{ width: `${percentage}%` }}
                     />
-                    <span className="relative z-10 font-semibold text-sm">{option.label}</span>
+                    {/* Button content */}
+                    <div className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+                      <span className="font-bold leading-tight">{option.label}</span>
+                      {totalVotes > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-white bg-black/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                          {percentage.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                   </Button>
                 );
               })}
             </div>
           )}
+
+          {/* TEMPLATE 4: MULTI-OPTION HORIZONTAL - Grid of colored buttons */}
+          {displayTemplate === 'multi-option-horizontal' && (
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 poll-buttons-horizontal">
+              {pollOptions.map((option, index) => {
+                const percentage = getPercentage(option.votes);
+                const isSelected = selectedOption === option.id;
+                const isWinner = winningOptionId === option.id;
+                
+                // Color scheme for multiple options - auto-assign based on index, border and progress match
+                const getColorScheme = () => {
+                  const colors = [
+                    { border: 'border-primary', bg: 'bg-primary', text: 'text-primary-foreground', hover: 'hover:border-primary/80' },
+                    { border: 'border-purple-500', bg: 'bg-purple-500', text: 'text-purple-900', hover: 'hover:border-purple-600' },
+                    { border: 'border-orange-500', bg: 'bg-orange-500', text: 'text-orange-900', hover: 'hover:border-orange-600' },
+                    { border: 'border-teal-500', bg: 'bg-teal-500', text: 'text-teal-900', hover: 'hover:border-teal-600' },
+                    { border: 'border-pink-500', bg: 'bg-pink-500', text: 'text-pink-900', hover: 'hover:border-pink-600' },
+                    { border: 'border-indigo-500', bg: 'bg-indigo-500', text: 'text-indigo-900', hover: 'hover:border-indigo-600' },
+                    { border: 'border-rose-500', bg: 'bg-rose-500', text: 'text-rose-900', hover: 'hover:border-rose-600' },
+                    { border: 'border-cyan-500', bg: 'bg-cyan-500', text: 'text-cyan-900', hover: 'hover:border-cyan-600' },
+                  ];
+                  return colors[index % colors.length];
+                };
+                
+                const colors = getColorScheme();
+                
+                return (
+                  <Button
+                    key={option.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleVote(option.id);
+                    }}
+                    disabled={loading || (!!selectedOption && selectedOption !== option.id)}
+                    className={`relative h-12 sm:h-14 px-4 font-bold text-sm sm:text-base rounded-xl transition-all overflow-hidden border-2 bg-white ${
+                      colors.border
+                    } ${
+                      colors.text
+                    } ${
+                      colors.hover
+                    } ${
+                      isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
+                    } ${
+                      isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
+                    }`}
+                    variant="outline"
+                  >
+                    {/* Progress bar background - solid color matching border */}
+                    <div 
+                      className={`absolute inset-0 transition-all duration-700 ease-out ${colors.bg}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                    {/* Button content */}
+                    <div className="relative z-10 flex items-center justify-between w-full">
+                      <span className="font-bold">{option.label}</span>
+                      {totalVotes > 0 && (
+                        <span className="text-xs sm:text-sm font-bold text-white bg-black/30 px-2 py-0.5 rounded-md">
+                          {percentage.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* TEMPLATE 3: MULTI YES/NO - Vertical List with Dual Buttons */}
+          {displayTemplate === 'multi-yes-no' && (() => {
+            // Sort options by votes (descending) and limit to top 2 if compact mode
+            const sortedOptions = [...pollOptions].sort((a, b) => b.votes - a.votes);
+            const displayOptions = isCompact && pollOptions.length > 2 
+              ? sortedOptions.slice(0, 2) 
+              : sortedOptions;
+            const hiddenCount = isCompact ? pollOptions.length - 2 : 0;
+            
+            return (
+              <div className="space-y-1.5">
+                {displayOptions.map((option, index) => {
+                const percentage = getPercentage(option.votes);
+                const isSelectedYes = selectedOption === `${option.id}-yes`;
+                const isSelectedNo = selectedOption === `${option.id}-no`;
+                const isWinner = winningOptionId === option.id;
+                
+                return (
+                  <div 
+                    key={option.id}
+                    className={`relative rounded-lg p-1.5 sm:p-2 border transition-all hover:shadow-sm ${
+                      isWinner ? 'border-yellow-400 bg-yellow-50/50 shadow-sm' : 'border-border/30 bg-muted/10 hover:border-border/50'
+                    }`}
+                  >
+                    
+                    <div className="relative flex items-center justify-between gap-2">
+                      {/* Left: Candidate name and percentage */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs sm:text-sm font-semibold truncate flex items-center gap-1.5">
+                          {option.label}
+                          {isWinner && (
+                            <span className="inline-flex items-center text-[10px] bg-yellow-400/20 text-yellow-600 px-1.5 py-0.5 rounded-full">
+                              🏆
+                            </span>
+                          )}
+                        </div>
+                        {showProbability && totalVotes > 0 && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all duration-700 ${
+                                  percentage >= 50 ? 'bg-green-500' : percentage >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className={`text-[10px] sm:text-xs font-bold tabular-nums ${
+                              percentage >= 50 ? 'text-green-600' : percentage >= 30 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {percentage.toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Right: Yes/No buttons */}
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleVote(`${option.id}-yes`);
+                          }}
+                          disabled={loading || (!!selectedOption && selectedOption !== `${option.id}-yes`)}
+                          className={`h-6 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-xs font-bold rounded-md border transition-all ${
+                            isSelectedYes 
+                              ? 'bg-blue-500 border-blue-600 text-white shadow-sm' 
+                              : 'bg-blue-500/10 border-blue-500/40 text-blue-700 hover:bg-blue-500/20 hover:border-blue-500/60'
+                          } ${
+                            selectedOption && !isSelectedYes ? 'opacity-40' : ''
+                          }`}
+                          variant="outline"
+                        >
+                          Yes
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleVote(`${option.id}-no`);
+                          }}
+                          disabled={loading || (!!selectedOption && selectedOption !== `${option.id}-no`)}
+                          className={`h-6 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-xs font-bold rounded-md border transition-all ${
+                            isSelectedNo 
+                              ? 'bg-pink-500 border-pink-600 text-white shadow-sm' 
+                              : 'bg-pink-500/10 border-pink-500/40 text-pink-700 hover:bg-pink-500/20 hover:border-pink-500/60'
+                          } ${
+                            selectedOption && !isSelectedNo ? 'opacity-40' : ''
+                          }`}
+                          variant="outline"
+                        >
+                          No
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* Show "View all options" link when truncated */}
+              {isCompact && hiddenCount > 0 && (
+                <div className="text-center pt-1">
+                  <div className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium text-primary/70 bg-primary/5 px-2 py-1 rounded-md border border-primary/20">
+                    <span>+{hiddenCount} more</span>
+                    <span className="text-muted-foreground hidden sm:inline">· Click to view all</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            );
+          })()}
           
           {/* Already Voted Indicator */}
           {selectedOption && (
@@ -356,7 +589,10 @@ export function PollCard({ poll, onVote }: PollCardProps) {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <span className="text-xs font-semibold text-primary">
-                You voted for {pollOptions.find(opt => opt.id === selectedOption)?.label}
+                {displayTemplate === 'multi-yes-no' 
+                  ? `You voted ${selectedOption.includes('-yes') ? 'Yes' : 'No'}` 
+                  : `You voted for ${pollOptions.find(opt => opt.id === selectedOption)?.label || selectedOption}`
+                }
               </span>
             </div>
           )}

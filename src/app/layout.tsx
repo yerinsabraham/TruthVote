@@ -4,6 +4,7 @@ import "./globals.css";
 import "./mobile.css";
 import { Providers } from "@/components/providers/Providers";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,6 +63,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <Providers>
             {children}
+            <MobileBottomNav />
           </Providers>
         </ErrorBoundary>
       </body>

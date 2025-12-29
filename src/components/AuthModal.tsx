@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,6 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
     setLoading(true);
     try {
       await signInWithGoogle();
-      toast.success(mode === 'login' ? 'Signed in successfully!' : 'Welcome to TruthVote!');
       handleClose();
       router.refresh();
     } catch (error: any) {
@@ -53,7 +52,6 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
     setLoading(true);
     try {
       await signInWithApple();
-      toast.success(mode === 'login' ? 'Signed in successfully!' : 'Welcome to TruthVote!');
       handleClose();
       router.refresh();
     } catch (error: any) {
@@ -80,7 +78,6 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
     setLoading(true);
     try {
       await signIn(email, password);
-      toast.success('Signed in successfully!');
       handleClose();
       router.refresh();
     } catch (error: any) {
@@ -105,7 +102,6 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
     setLoading(true);
     try {
       await signUp(email, password, displayName);
-      toast.success('Account created! Please check your email to verify.');
       handleClose();
       router.refresh();
     } catch (error: any) {
@@ -117,16 +113,16 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+        <DialogTitle className="text-xl font-semibold text-center">
+          {step === 'initial' && (mode === 'login' ? 'Log In' : 'Sign Up')}
+          {step === 'email-password' && 'Enter Password'}
+          {step === 'signup-form' && 'Create Account'}
+        </DialogTitle>
+        
         {/* Initial Step - Social + Email button */}
         {step === 'initial' && (
           <div className="space-y-6 py-4">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">
-                {mode === 'login' ? 'Log In' : 'Sign Up'}
-              </h2>
-            </div>
-
             {/* Google Sign In */}
             <Button
               onClick={handleGoogleSignIn}
@@ -248,10 +244,7 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
         {/* Email + Password Step (Login) */}
         {step === 'email-password' && mode === 'login' && (
           <div className="space-y-6 py-4">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">Enter Password</h2>
-              <p className="text-sm text-gray-500 mt-1">{email}</p>
-            </div>
+            <p className="text-sm text-gray-500 text-center">{email}</p>
 
             <form onSubmit={handleEmailPasswordSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -292,10 +285,6 @@ export function AuthModal({ isOpen, onClose, mode, onModeToggle }: AuthModalProp
         {/* Full Signup Form */}
         {step === 'signup-form' && mode === 'signup' && (
           <div className="space-y-6 py-4">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">Create Account</h2>
-            </div>
-
             <form onSubmit={handleSignupSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="displayName">Display Name</Label>

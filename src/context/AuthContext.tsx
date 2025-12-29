@@ -27,17 +27,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    // Set a maximum loading time of 10 seconds
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth loading timeout - proceeding without auth');
+        setLoading(false);
+      }
+    }, 10000);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(loadingTimeout);
       setUser(user);
       
       if (user) {
-        // Fetch user profile from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const profileData = userDoc.data();
-          const profile = { id: userDoc.id, ...profileData };
-          setUserProfile(profile);
-          setIsAdmin(profileData.role === 'admin');
+        try {
+          // Check admin status via custom claims (more secure)
+          const tokenResult = await user.getIdTokenResult();
+          const isAdminClaim = tokenResult.claims.admin === true;
+          
+          // Also verify email matches admin email as fallback
+          const isAdminEmail = user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+          
+          setIsAdmin(isAdminClaim || isAdminEmail);
+          
+          // Fetch user profile from Firestore with timeout
+          const userDoc = await Promise.race([
+            getDoc(doc(db, 'users', user.uid)),
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Firestore timeout')), 5000)
+            )
+          ]);
+          
+          if (userDoc && userDoc.exists()) {
+            const profileData = userDoc.data();
+            const profile = { id: userDoc.id, ...profileData };
+            setUserProfile(profile);
+          }
+        } catch (error) {
+          console.error('Error loading user data:', error);
+          // Continue anyway - user is authenticated even if profile fails to load
         }
       } else {
         setUserProfile(null);
@@ -47,7 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
   }, []);
 
   return (

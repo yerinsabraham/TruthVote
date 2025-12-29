@@ -1,7 +1,7 @@
 // src/hooks/useBookmark.ts
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/context/AuthContext';
@@ -38,7 +38,7 @@ export function useBookmark() {
     fetchBookmarks();
   }, [user]);
 
-  const toggleBookmark = async (predictionId: string) => {
+  const toggleBookmark = useCallback(async (predictionId: string) => {
     if (!user) {
       toast.error('Please sign in to bookmark predictions');
       return false;
@@ -57,7 +57,6 @@ export function useBookmark() {
           newSet.delete(predictionId);
           return newSet;
         });
-        toast.success('Removed from bookmarks');
       } else {
         // Add bookmark
         await setDoc(bookmarkRef, {
@@ -66,7 +65,6 @@ export function useBookmark() {
           createdAt: new Date(),
         });
         setBookmarkedPredictions(prev => new Set(prev).add(predictionId));
-        toast.success('Added to bookmarks');
       }
 
       setLoading(false);
@@ -77,11 +75,11 @@ export function useBookmark() {
       setLoading(false);
       return false;
     }
-  };
+  }, [user, bookmarkedPredictions]);
 
-  const isBookmarked = (predictionId: string) => {
+  const isBookmarked = useCallback((predictionId: string) => {
     return bookmarkedPredictions.has(predictionId);
-  };
+  }, [bookmarkedPredictions]);
 
   return { toggleBookmark, isBookmarked, bookmarkedPredictions, loading };
 }

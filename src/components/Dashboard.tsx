@@ -80,11 +80,11 @@ export function Dashboard({ searchQuery = '' }: DashboardProps) {
       const searchMatch = !searchQuery || 
         poll.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
         poll.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        poll.category.toLowerCase().includes(searchQuery.toLowerCase());
+        poll.category?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Status filter
-      const endDate = poll.endDate.toDate();
-      const isActive = endDate > now;
+      // Status filter - handle both old and new field names
+      const endDate = (poll.endTime || poll.endDate)?.toDate();
+      const isActive = endDate ? endDate > now : true;
       let statusMatch = true;
       if (filters.status === 'active') statusMatch = isActive;
       if (filters.status === 'ended') statusMatch = !isActive;
@@ -101,20 +101,22 @@ export function Dashboard({ searchQuery = '' }: DashboardProps) {
     // Sort based on selected filter
     filtered.sort((a, b) => {
       if (filters.sortBy === 'trending') {
-        // Sort by total votes (engagement)
-        const votesA = a.voteCountA + a.voteCountB;
-        const votesB = b.voteCountA + b.voteCountB;
+        // Sort by total votes (engagement) - handle both old and new formats
+        const votesA = a.totalVotes ?? ((a.voteCountA ?? 0) + (a.voteCountB ?? 0));
+        const votesB = b.totalVotes ?? ((b.voteCountA ?? 0) + (b.voteCountB ?? 0));
         return votesB - votesA;
       } else if (filters.sortBy === 'newest') {
         // Sort by creation date (newest first)
         return b.createdAt.toMillis() - a.createdAt.toMillis();
       } else if (filters.sortBy === 'ending-soon') {
-        // Sort by end date (ending soonest first)
-        return a.endDate.toMillis() - b.endDate.toMillis();
+        // Sort by end date (ending soonest first) - handle both old and new field names
+        const endA = (a.endTime || a.endDate)?.toMillis() ?? 0;
+        const endB = (b.endTime || b.endDate)?.toMillis() ?? 0;
+        return endA - endB;
       } else if (filters.sortBy === '24h-volume') {
         // Sort by votes in last 24 hours (approximation using total votes for now)
-        const votesA = a.voteCountA + a.voteCountB;
-        const votesB = b.voteCountA + b.voteCountB;
+        const votesA = a.totalVotes ?? ((a.voteCountA ?? 0) + (a.voteCountB ?? 0));
+        const votesB = b.totalVotes ?? ((b.voteCountA ?? 0) + (b.voteCountB ?? 0));
         return votesB - votesA;
       }
       return 0;
@@ -127,7 +129,7 @@ export function Dashboard({ searchQuery = '' }: DashboardProps) {
     const poll = predictions.find(p => p.id === pollId);
     if (!poll) return false;
     
-    const success = await submitVote(pollId, option, poll.question, poll.category);
+    const success = await submitVote(pollId, option, poll.question, poll.category || 'General');
     
     // Reload user votes to update the feed
     if (success && getUserVotes) {
@@ -226,9 +228,10 @@ export function Dashboard({ searchQuery = '' }: DashboardProps) {
                 key={poll.id} 
                 poll={{
                   ...poll,
-                  endDate: poll.endDate.toDate(),
+                  endDate: (poll.endTime || poll.endDate)?.toDate(),
                 }} 
-                onVote={handleVote} 
+                onVote={handleVote}
+                isCompact={true}
               />
             ))
           ) : (

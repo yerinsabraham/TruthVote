@@ -7,10 +7,31 @@ import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useState } from 'react';
-import { AuthModal } from '@/components/AuthModal';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { SearchDropdown } from '@/components/SearchDropdown';
+import { AuthModal } from '@/components/AuthModal';
+
+// Rank colors mapping - Lighter colors for backgrounds
+const RANK_COLORS: Record<string, string> = {
+  novice: '#EF4444',      // Light Red
+  amateur: '#3B82F6',     // Light Blue
+  analyst: '#A855F7',     // Light Purple
+  professional: '#F59E0B', // Light Amber/Orange
+  expert: '#EC4899',      // Light Pink
+  master: '#22C55E',      // Light Green
+};
+
+// Format rank name with capital first letter
+const formatRankName = (rank: string): string => {
+  if (!rank) return 'Novice';
+  return rank.charAt(0).toUpperCase() + rank.slice(1).toLowerCase();
+};
+
+// Get rank color
+const getRankColor = (rank: string): string => {
+  return RANK_COLORS[rank?.toLowerCase()] || RANK_COLORS.novice;
+};
 
 interface NavbarProps {
   searchQuery?: string;
@@ -21,24 +42,36 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
   const { user, userProfile, loading, isAdmin } = useAuth();
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.success('Signed out successfully');
       router.push('/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sign out');
     }
   };
 
-  const openAuthModal = (mode: 'login' | 'signup') => {
-    setAuthMode(mode);
-    setAuthModalOpen(true);
-  };
+  const openLoginModal = useCallback(() => {
+    setAuthMode('login');
+    setShowAuthModal(true);
+  }, []);
+
+  const openSignupModal = useCallback(() => {
+    setAuthMode('signup');
+    setShowAuthModal(true);
+  }, []);
+
+  const toggleAuthMode = useCallback(() => {
+    setAuthMode(prev => prev === 'login' ? 'signup' : 'login');
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setShowAuthModal(false);
+  }, []);
 
   return (
     <nav className="border-b border-border bg-card">
@@ -94,11 +127,31 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 border-2 border-primary/40 rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="text-right">
-                    <p className="text-sm font-medium leading-tight">{userProfile?.displayName || 'User'}</p>
-                    <p className="text-xs text-muted-foreground leading-tight">
-                      {userProfile?.totalPoints || 0} pts
-                    </p>
+                  {/* Profile Picture */}
+                  {user?.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt={userProfile?.displayName || user?.displayName || 'User'}
+                      className="w-8 h-8 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                      style={{ backgroundColor: getRankColor(userProfile?.rank || 'novice') }}
+                    >
+                      {(userProfile?.displayName?.[0] || user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                    </div>
+                  )}
+                  
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <p className="text-sm font-medium leading-tight">{userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User'}</p>
+                    <span 
+                      className="text-xs font-semibold leading-tight px-2.5 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: getRankColor(userProfile?.rank || 'novice') }}
+                    >
+                      {formatRankName(userProfile?.rank || 'novice')}
+                    </span>
                   </div>
                 </button>
                 
@@ -110,9 +163,31 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
                     />
                     
                     <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-border bg-primary/25">
-                        <p className="text-sm font-semibold text-foreground">{userProfile?.displayName || 'User'}</p>
-                        <p className="text-xs text-muted-foreground">{userProfile?.totalPoints || 0} points</p>
+                      <div className="px-4 py-3 border-b border-border bg-primary/25 flex items-center gap-3">
+                        {user?.photoURL ? (
+                          <img 
+                            src={user.photoURL} 
+                            alt={userProfile?.displayName || user?.displayName || 'User'}
+                            className="w-10 h-10 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white"
+                            style={{ backgroundColor: getRankColor(userProfile?.rank || 'novice') }}
+                          >
+                            {(userProfile?.displayName?.[0] || user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{userProfile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User'}</p>
+                          <span 
+                            className="inline-block text-xs font-semibold mt-1 px-2.5 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: getRankColor(userProfile?.rank || 'novice') }}
+                          >
+                            {formatRankName(userProfile?.rank || 'novice')}
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="py-1">
@@ -170,10 +245,10 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
               </div>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => openAuthModal('login')}>
+                <Button variant="outline" size="sm" onClick={openLoginModal}>
                   Login
                 </Button>
-                <Button size="sm" onClick={() => openAuthModal('signup')}>
+                <Button size="sm" onClick={openSignupModal}>
                   Sign Up
                 </Button>
               </div>
@@ -181,11 +256,12 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
           </div>
         </div>
       </div>
-      
+
       <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        isOpen={showAuthModal}
+        onClose={closeAuthModal}
         mode={authMode}
+        onModeToggle={toggleAuthMode}
       />
     </nav>
   );

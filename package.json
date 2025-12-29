@@ -11,8 +11,10 @@
     "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:all": "npm run build && firebase deploy",
     "seed": "tsx scripts/seedData.ts",
+    "seed:ranks": "tsx scripts/seedRankData.ts",
     "clear-votes": "tsx scripts/clearVotes.ts",
-    "clear-all": "tsx scripts/clearAllData.ts"
+    "clear-all": "tsx scripts/clearAllData.ts",
+    "setup-admin": "tsx scripts/setupAdmin.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -26,6 +28,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.7.0",
+    "firebase-admin": "^13.6.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.0",
     "react": "19.2.3",

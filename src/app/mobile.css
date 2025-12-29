@@ -12,6 +12,17 @@
     margin-bottom: 1rem;
   }
 
+  /* Keep poll buttons horizontal on mobile */
+  .poll-buttons-horizontal {
+    display: flex !important;
+    flex-direction: row !important;
+  }
+
+  .poll-buttons-horizontal.grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
   /* Buttons and interactive elements */
   button, .button {
     min-height: 44px; /* Touch-friendly size */
@@ -26,8 +37,8 @@
     padding: 0.625rem 0.75rem;
   }
 
-  /* Grid layouts */
-  .grid-cols-2 {
+  /* Grid layouts - but NOT poll buttons */
+  .grid-cols-2:not(.poll-buttons-horizontal) {
     grid-template-columns: 1fr;
   }
 

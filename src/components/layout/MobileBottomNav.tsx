@@ -50,20 +50,32 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-bottom">
-      <div className="flex justify-around items-center h-16">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-border z-50 safe-area-bottom shadow-lg">
+      <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.name}
               href={item.href}
-              className="flex flex-col items-center justify-center flex-1 h-full"
+              className="relative flex flex-col items-center justify-center flex-1 h-full group"
             >
-              {item.icon(isActive)}
-              <span className={`text-xs mt-1 ${isActive ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                {item.name}
-              </span>
+              {/* Active indicator pill */}
+              {isActive && (
+                <div className="absolute inset-0 mx-2 bg-primary/10 rounded-xl transition-all" />
+              )}
+              
+              {/* Icon and label */}
+              <div className="relative z-10 flex flex-col items-center justify-center transition-all group-active:scale-95">
+                <div className={`transition-all ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
+                  {item.icon(isActive)}
+                </div>
+                <span className={`text-[10px] mt-1 font-medium transition-colors ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                  {item.name}
+                </span>
+              </div>
             </Link>
           );
         })}

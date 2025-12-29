@@ -43,6 +43,18 @@ service firebase.storage {
       allow delete: if isAuthenticated();
     }
     
+    // Prediction images (authenticated users can upload during creation)
+    match /predictions/{fileName} {
+      // Anyone can read prediction images (public CDN access)
+      allow read: if true;
+      // Authenticated users can upload prediction images (max 5MB, images only)
+      allow create, update: if isAuthenticated()
+                            && isImage()
+                            && isValidSize(5);
+      // Only authenticated users can delete prediction images
+      allow delete: if isAuthenticated();
+    }
+    
     // Banner images (admin only)
     match /banners/{fileName} {
       // Anyone can read banners

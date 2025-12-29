@@ -1,9 +1,128 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARY: Allow all reads and writes for seeding
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.admin == true || 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user profiles
+      allow read: if true;
+      
+      // Users can create their own profile
+      allow create: if isOwner(userId);
+      
+      // Users can only update their own profile (except role and admin fields)
+      allow update: if isOwner(userId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Predictions collection
+    match /predictions/{predictionId} {
+      // Anyone can read predictions (filtering happens in app)
+      allow read: if true;
+      
+      // Only admins can create, update, or delete predictions
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Votes collection
+    match /votes/{voteId} {
+      // Anyone authenticated can read votes (needed for profile pages)
+      allow read: if isAuthenticated();
+      
+      // Votes are created through Cloud Function only
+      // Direct writes are allowed but validation happens in function
+      allow create: if isAuthenticated();
+      
+      // Votes cannot be updated once cast
+      allow update: if false;
+      
+      // Only admins can delete votes
+      allow delete: if isAdmin();
+    }
+    
+    // Bookmarks collection (top-level)
+    match /bookmarks/{bookmarkId} {
+      // Users can read their own bookmarks, or anyone authenticated can read for profiles
+      allow read: if isAuthenticated();
+      
+      // Users can create/update/delete their own bookmarks
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Categories collection
+    match /categories/{categoryId} {
+      // Anyone can read categories
+      allow read: if true;
+      
+      // Only admins can modify categories
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Comments collection
+    match /comments/{commentId} {
+      // Anyone can read comments
+      allow read: if true;
+      
+      // Authenticated users can create comments
+      allow create: if isAuthenticated();
+      
+      // Users can update/delete their own comments
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // Bookmarks collection (subcollection of users)
+    match /users/{userId}/bookmarks/{bookmarkId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Follows collection (subcollection of users)
+    match /users/{userId}/following/{followId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+    
+    match /users/{userId}/followers/{followerId} {
+      allow read: if true;
+      allow write: if isOwner(followerId);
+    }
+    
+    // Admin logs collection - admin only
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Rank history collection
+    match /rankHistory/{historyId} {
+      // Users can read their own rank history
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Only Cloud Functions can write rank history
+      allow write: if false;
     }
   }
 }
+

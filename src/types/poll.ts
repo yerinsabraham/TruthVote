@@ -7,6 +7,8 @@ export interface PollOption {
   votes: number; // Number of votes for this option
 }
 
+export type PollDisplayTemplate = 'two-option-horizontal' | 'three-option-horizontal' | 'multi-yes-no';
+
 export interface Poll {
   id: string;
   question: string;
@@ -26,6 +28,12 @@ export interface Poll {
   createdBy: string; // userId (admin only)
   status: 'draft' | 'active' | 'closed' | 'resolved'; // Prediction lifecycle
   published: boolean; // Whether visible to users
+  displayTemplate?: PollDisplayTemplate; // Layout template for displaying options
+  
+  // Trending fields
+  isTrending?: boolean; // Whether prediction is featured in Trending
+  trendingSubcategory?: string | null; // Subcategory within Trending
+  trendingAddedAt?: Timestamp; // When added to trending
   
   // Legacy support for existing data
   optionA?: string;

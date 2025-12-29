@@ -9,6 +9,36 @@ import { useCategories } from '@/hooks/useCategories';
 import { PollCard } from '@/components/PollCard';
 import Link from 'next/link';
 import { useVote } from '@/hooks/useVote';
+import { 
+  Landmark, 
+  Trophy, 
+  Tv, 
+  Cpu, 
+  DollarSign, 
+  FlaskConical, 
+  Globe,
+  Briefcase,
+  Heart,
+  GraduationCap,
+  Gamepad2,
+  Mountain
+} from 'lucide-react';
+
+// Map category names to icons
+const categoryIcons: Record<string, any> = {
+  'Politics': Landmark,
+  'Sports': Trophy,
+  'Entertainment': Tv,
+  'Technology': Cpu,
+  'Finance': DollarSign,
+  'Science': FlaskConical,
+  'World': Globe,
+  'Business': Briefcase,
+  'Health': Heart,
+  'Education': GraduationCap,
+  'Gaming': Gamepad2,
+  'Environment': Mountain,
+};
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,19 +113,22 @@ export default function SearchPage() {
             <div>
               <h2 className="text-lg font-bold mb-4">Popular Categories</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.slice(0, 8).map(category => (
-                  <Link
-                    key={category.id}
-                    href={`/?category=${category.name}`}
-                    className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:border-primary transition-colors"
-                  >
-                    <span className="text-2xl">{category.icon}</span>
-                    <div>
-                      <p className="font-semibold text-sm">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">{category.subcategories?.length || 0} topics</p>
-                    </div>
-                  </Link>
-                ))}
+                {categories.slice(0, 8).map(category => {
+                  const IconComponent = categoryIcons[category.name] || Landmark;
+                  return (
+                    <Link
+                      key={category.id}
+                      href={`/?category=${category.name}`}
+                      className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:border-primary transition-colors"
+                    >
+                      <IconComponent className="w-5 h-5 text-foreground flex-shrink-0" strokeWidth={2} />
+                      <div>
+                        <p className="font-semibold text-sm">{category.name}</p>
+                        <p className="text-xs text-muted-foreground">{category.subcategories?.length || 0} topics</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -167,19 +200,22 @@ export default function SearchPage() {
               <div>
                 <h3 className="text-md font-semibold mb-3">Categories</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {filteredCategories.map(category => (
-                    <Link
-                      key={category.id}
-                      href={`/?category=${category.name}`}
-                      className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:border-primary transition-colors"
-                    >
-                      <span className="text-2xl">{category.icon}</span>
-                      <div>
-                        <p className="font-semibold text-sm">{category.name}</p>
-                        <p className="text-xs text-muted-foreground">{category.subcategories?.length || 0} topics</p>
-                      </div>
-                    </Link>
-                  ))}
+                  {filteredCategories.map(category => {
+                    const IconComponent = categoryIcons[category.name] || Landmark;
+                    return (
+                      <Link
+                        key={category.id}
+                        href={`/?category=${category.name}`}
+                        className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:border-primary transition-colors"
+                      >
+                        <IconComponent className="w-5 h-5 text-foreground flex-shrink-0" strokeWidth={2} />
+                        <div>
+                          <p className="font-semibold text-sm">{category.name}</p>
+                          <p className="text-xs text-muted-foreground">{category.subcategories?.length || 0} topics</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}

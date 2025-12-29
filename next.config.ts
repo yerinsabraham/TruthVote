@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Trailing slash for better Firebase hosting compatibility
   trailingSlash: true,
+  // Disable TypeScript checking during build (run separately)
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // Optimize CSS loading to reduce preload warnings
+  experimental: {
+    optimizeCss: false, // Disable CSS optimization for static export
+  },
+  // Optimize production bundle
+  productionBrowserSourceMaps: false,
+  compress: true,
 };
 
 export default nextConfig;

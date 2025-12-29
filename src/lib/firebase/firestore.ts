@@ -17,6 +17,9 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
+// Re-export db for convenience
+export { db };
+
 // Generic Firestore helpers
 export async function getDocument(collectionName: string, documentId: string) {
   const docRef = doc(db, collectionName, documentId);
