@@ -40,10 +40,15 @@ service cloud.firestore {
       // Anyone can read predictions (filtering happens in app)
       allow read: if true;
       
-      // Only admins can create, update, or delete predictions
+      // Only admins can create or delete predictions
       allow create: if isAdmin();
-      allow update: if isAdmin();
       allow delete: if isAdmin();
+      
+      // Admins can update everything, authenticated users can only update vote counts and comment counts
+      allow update: if isAdmin() || (
+        isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCountA', 'voteCountB', 'totalVotes', 'options', 'commentCount'])
+      );
     }
     
     // Votes collection
@@ -89,8 +94,15 @@ service cloud.firestore {
       // Authenticated users can create comments
       allow create: if isAuthenticated();
       
-      // Users can update/delete their own comments
-      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+      // Users can update their own comments, or update likes/likedBy on any comment
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        // Allow updating only likes and likedBy fields (for liking comments)
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'replyCount'])
+      );
+      
+      // Users can delete their own comments, admins can delete any
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
     
     // Bookmarks collection (subcollection of users)

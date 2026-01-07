@@ -79,7 +79,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="gap-2 bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+        className="gap-2 bg-white border-gray-200 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
       >
         <svg
           className="w-4 h-4 text-gray-900"

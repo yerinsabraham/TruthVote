@@ -68,6 +68,18 @@ exports.submitVote = onCall(async (request) => {
       );
     }
 
+    // Parse option for multi-yes-no format (e.g., "A-yes" or "A-no")
+    let actualOption = option;
+    let voteType = "regular";
+
+    if (option.includes("-yes")) {
+      actualOption = option.replace("-yes", "");
+      voteType = "yes";
+    } else if (option.includes("-no")) {
+      actualOption = option.replace("-no", "");
+      voteType = "no";
+    }
+
     // Use batch write for atomicity
     const batch = db.batch();
 
@@ -75,7 +87,8 @@ exports.submitVote = onCall(async (request) => {
     batch.set(voteRef, {
       predictionId,
       userId,
-      option,
+      option: actualOption, // Store the base option (e.g., 'A', 'B')
+      voteType, // Store whether it's yes, no, or regular
       votedAt: now,
       predictionQuestion: predictionQuestion || predictionData.question,
       predictionCategory: predictionCategory || predictionData.category,
@@ -86,12 +99,23 @@ exports.submitVote = onCall(async (request) => {
     // Update prediction vote counts
     if (predictionData.options) {
       const optionIndex = predictionData.options.findIndex(
-          (opt) => opt.id === option,
+          (opt) => opt.id === actualOption,
       );
       if (optionIndex !== -1) {
         const updatedOptions = [...predictionData.options];
-        updatedOptions[optionIndex].votes =
-          (updatedOptions[optionIndex].votes || 0) + 1;
+
+        // Update the appropriate vote count based on vote type
+        if (voteType === "yes") {
+          updatedOptions[optionIndex].votesYes =
+            (updatedOptions[optionIndex].votesYes || 0) + 1;
+        } else if (voteType === "no") {
+          updatedOptions[optionIndex].votesNo =
+            (updatedOptions[optionIndex].votesNo || 0) + 1;
+        } else {
+          updatedOptions[optionIndex].votes =
+            (updatedOptions[optionIndex].votes || 0) + 1;
+        }
+
         batch.update(predictionRef, {
           options: updatedOptions,
           totalVotes: admin.firestore.FieldValue.increment(1),
@@ -99,7 +123,7 @@ exports.submitVote = onCall(async (request) => {
       }
     } else {
       // Legacy format
-      const updateField = option === "A" ? "voteCountA" : "voteCountB";
+      const updateField = actualOption === "A" ? "voteCountA" : "voteCountB";
       batch.update(predictionRef, {
         [updateField]: admin.firestore.FieldValue.increment(1),
       });

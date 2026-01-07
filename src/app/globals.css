@@ -1,17 +1,47 @@
 @import "tailwindcss";
 
-/* Light theme (Kalshi-like professional palette) */
-@theme {
+/* Light theme variables */
+:root {
   --color-background: #FFFFFF;
   --color-foreground: #111827;
   --color-card: #FFFFFF;
   --color-card-foreground: #111827;
-  --color-primary: #00649c; /* official brand color */
-  --color-success: #059669; /* keep green */
-  --color-danger: #DC2626; /* strong red */
+  --color-primary: #00649c;
+  --color-success: #059669;
+  --color-danger: #DC2626;
   --color-warning: #F59E0B;
   --color-muted: #6B7280;
   --color-border: #E5E7EB;
+}
+
+/* Dark theme variables - Polymarket-style */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0f1419;
+    --color-foreground: #E5E7EB;
+    --color-card: #1a2332;
+    --color-card-foreground: #E5E7EB;
+    --color-primary: #0ea5db;
+    --color-success: #10B981;
+    --color-danger: #EF4444;
+    --color-warning: #F59E0B;
+    --color-muted: #9CA3AF;
+    --color-border: #2d3748;
+  }
+}
+
+/* Register theme colors with Tailwind */
+@theme {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-primary: var(--color-primary);
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+  --color-muted: var(--color-muted);
+  --color-border: var(--color-border);
 }
 
 body {

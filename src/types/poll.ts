@@ -5,6 +5,8 @@ export interface PollOption {
   id: string; // 'A', 'B', 'C', etc.
   label: string; // The text of the option
   votes: number; // Number of votes for this option
+  votesYes?: number; // For multi-yes-no template: votes for "Yes" on this option
+  votesNo?: number; // For multi-yes-no template: votes for "No" on this option
 }
 
 export type PollDisplayTemplate = 'two-option-horizontal' | 'three-option-horizontal' | 'multi-yes-no';

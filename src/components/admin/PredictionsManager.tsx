@@ -604,7 +604,11 @@ export default function PredictionsManager() {
                           ? 'border-primary bg-primary/10 shadow-md' 
                           : 'border-border hover:border-primary/50'
                       }`}
-                      onClick={() => setFormData({ ...formData, displayTemplate: 'two-option-horizontal' })}
+                      onClick={() => setFormData({ 
+                        ...formData, 
+                        displayTemplate: 'two-option-horizontal',
+                        options: [{ label: 'Yes' }, { label: 'No' }]
+                      })}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input
@@ -612,7 +616,11 @@ export default function PredictionsManager() {
                           name="displayTemplate"
                           value="two-option-horizontal"
                           checked={formData.displayTemplate === 'two-option-horizontal'}
-                          onChange={() => setFormData({ ...formData, displayTemplate: 'two-option-horizontal' })}
+                          onChange={() => setFormData({ 
+                            ...formData, 
+                            displayTemplate: 'two-option-horizontal',
+                            options: [{ label: 'Yes' }, { label: 'No' }]
+                          })}
                           className="w-4 h-4"
                         />
                         <span className="font-semibold">Two-Option Horizontal (Yes/No)</span>
@@ -620,10 +628,10 @@ export default function PredictionsManager() {
                       <p className="text-sm text-muted-foreground ml-6 mb-2">Perfect for binary predictions. Two large horizontal buttons side-by-side.</p>
                       <div className="flex gap-2 ml-6">
                         <div className="flex-1 h-10 bg-green-600/20 border-2 border-green-600/50 rounded flex items-center justify-center text-sm font-bold">
-                          Yes / Team A
+                          Yes
                         </div>
                         <div className="flex-1 h-10 bg-red-600/20 border-2 border-red-600/50 rounded flex items-center justify-center text-sm font-bold">
-                          No / Team B
+                          No
                         </div>
                       </div>
                     </div>
@@ -634,7 +642,11 @@ export default function PredictionsManager() {
                           ? 'border-primary bg-primary/10 shadow-md' 
                           : 'border-border hover:border-primary/50'
                       }`}
-                      onClick={() => setFormData({ ...formData, displayTemplate: 'three-option-horizontal' })}
+                      onClick={() => setFormData({ 
+                        ...formData, 
+                        displayTemplate: 'three-option-horizontal',
+                        options: [{ label: 'Yes' }, { label: 'Maybe' }, { label: 'No' }]
+                      })}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <input
@@ -642,7 +654,11 @@ export default function PredictionsManager() {
                           name="displayTemplate"
                           value="three-option-horizontal"
                           checked={formData.displayTemplate === 'three-option-horizontal'}
-                          onChange={() => setFormData({ ...formData, displayTemplate: 'three-option-horizontal' })}
+                          onChange={() => setFormData({ 
+                            ...formData, 
+                            displayTemplate: 'three-option-horizontal',
+                            options: [{ label: 'Yes' }, { label: 'Maybe' }, { label: 'No' }]
+                          })}
                           className="w-4 h-4"
                         />
                         <span className="font-semibold">Three-Option Horizontal (With Middle Option)</span>
@@ -650,13 +666,13 @@ export default function PredictionsManager() {
                       <p className="text-sm text-muted-foreground ml-6 mb-2">For predictions with a neutral middle option (Tie/Draw/Maybe/Unsure).</p>
                       <div className="flex gap-2 ml-6">
                         <div className="flex-1 h-10 bg-blue-600/20 border-2 border-blue-600/50 rounded flex items-center justify-center text-sm font-bold">
-                          Option 1 (Left)
+                          Yes / Team A
                         </div>
                         <div className="w-24 h-10 bg-gray-400/20 border-2 border-gray-400/50 rounded flex items-center justify-center text-xs font-bold">
-                          Middle<br/>(Tie/Maybe)
+                          Maybe / Tie
                         </div>
                         <div className="flex-1 h-10 bg-green-600/20 border-2 border-green-600/50 rounded flex items-center justify-center text-sm font-bold">
-                          Option 3 (Right)
+                          No / Team B
                         </div>
                       </div>
                     </div>

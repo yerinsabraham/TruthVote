@@ -8,12 +8,21 @@ import { formatDistanceToNow } from 'date-fns';
 import { useVote } from '@/hooks/useVote';
 import { useAuth } from '@/context/AuthContext';
 import { useBookmark } from '@/hooks/useBookmark';
-import { Comments } from './Comments';
 import { ShareButton } from './ShareButton';
 import { OptimizedImage } from './OptimizedImage';
 import { AuthModal } from './AuthModal';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PollOption } from '@/types/poll';
+
+// Helper function to create URL-friendly slug
+function createSlug(question: string): string {
+  return question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 60);
+}
 
 interface PollCardProps {
   poll: {
@@ -49,6 +58,7 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
   const { checkUserVote, loading } = useVote();
   const { user } = useAuth();
   const { toggleBookmark, isBookmarked } = useBookmark();
+  const router = useRouter();
   
   // Normalize poll data - support both new and legacy formats with optimistic updates
   const pollOptions: PollOption[] = (poll.options || [
@@ -56,7 +66,9 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
     { id: 'B', label: poll.optionB || 'No', votes: poll.voteCountB || 0 }
   ]).map(opt => ({
     ...opt,
-    votes: optimisticVotes[opt.id] !== undefined ? optimisticVotes[opt.id] : opt.votes
+    votes: optimisticVotes[opt.id] !== undefined ? optimisticVotes[opt.id] : opt.votes,
+    votesYes: optimisticVotes[`${opt.id}-votesYes`] !== undefined ? optimisticVotes[`${opt.id}-votesYes`] : opt.votesYes,
+    votesNo: optimisticVotes[`${opt.id}-votesNo`] !== undefined ? optimisticVotes[`${opt.id}-votesNo`] : opt.votesNo
   }));
   
   const isBinary = pollOptions.length === 2;
@@ -107,9 +119,34 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
     // Optimistic updates - update UI immediately
     setSelectedOption(optionId);
     const newOptimisticVotes: Record<string, number> = {};
-    originalOptions.forEach(opt => {
-      newOptimisticVotes[opt.id] = opt.votes + (opt.id === optionId ? 1 : 0);
-    });
+    
+    // Handle multi-yes-no format
+    if (optionId.includes('-yes') || optionId.includes('-no')) {
+      const actualOption = optionId.replace('-yes', '').replace('-no', '');
+      const voteType = optionId.includes('-yes') ? 'yes' : 'no';
+      
+      originalOptions.forEach(opt => {
+        if (opt.id === actualOption) {
+          // Update the appropriate vote count
+          if (voteType === 'yes') {
+            newOptimisticVotes[`${opt.id}-votesYes`] = (opt.votesYes || 0) + 1;
+            newOptimisticVotes[`${opt.id}-votesNo`] = opt.votesNo || 0;
+          } else {
+            newOptimisticVotes[`${opt.id}-votesYes`] = opt.votesYes || 0;
+            newOptimisticVotes[`${opt.id}-votesNo`] = (opt.votesNo || 0) + 1;
+          }
+        } else {
+          newOptimisticVotes[`${opt.id}-votesYes`] = opt.votesYes || 0;
+          newOptimisticVotes[`${opt.id}-votesNo`] = opt.votesNo || 0;
+        }
+      });
+    } else {
+      // Regular voting
+      originalOptions.forEach(opt => {
+        newOptimisticVotes[opt.id] = opt.votes + (opt.id === optionId ? 1 : 0);
+      });
+    }
+    
     setOptimisticVotes(newOptimisticVotes);
     
     // Perform database operations in the background
@@ -176,7 +213,7 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
       <Card id={`prediction-${poll.id}`} className="card-elevated border border-border/50 overflow-hidden group hover:border-primary/50 hover:shadow-lg transition-all duration-200 h-full flex flex-col">
         
         {/* Header Row - Single Horizontal Row - Clickable to prediction page */}
-        <Link href={`/prediction?id=${poll.id}`}>
+        <Link href={`/prediction?id=${poll.id}&q=${createSlug(poll.question)}`}>
           <CardHeader className="pb-2 px-4 sm:px-6 cursor-pointer hover:bg-muted/30 transition-colors">
             <div className="flex items-center gap-3">
             {/* Left: Small square thumbnail (36-40px) */}
@@ -206,8 +243,8 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
               </CardTitle>
             </div>
             
-            {/* Right: Probability Indicator - Semicircle gauge */}
-            {showProbability && (
+            {/* Right: Probability Indicator - Semicircle gauge (hidden for multi-yes-no template) */}
+            {displayTemplate !== 'multi-yes-no' && showProbability && (
               <div className="flex-shrink-0 flex flex-col items-center gap-1">
                 {/* Semicircle gauge */}
                 <div className="relative w-14 h-7">
@@ -247,7 +284,7 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                 <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wide">chance</span>
               </div>
             )}
-            {!showProbability && (
+            {displayTemplate !== 'multi-yes-no' && !showProbability && (
               <div className="flex-shrink-0 flex flex-col items-center gap-1">
                 {/* Semicircle gauge placeholder */}
                 <div className="relative w-14 h-7">
@@ -274,7 +311,8 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
         <CardContent className="space-y-3 px-4 sm:px-6 pt-3 flex-1 flex flex-col">
           {/* TEMPLATE 1: TWO-OPTION HORIZONTAL - Side-by-Side with Progress Bars */}
           {displayTemplate === 'two-option-horizontal' && (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 poll-buttons-horizontal">
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 poll-buttons-horizontal">
               {pollOptions.map((option, index) => {
                 const percentage = getPercentage(option.votes);
                 const isSelected = selectedOption === option.id;
@@ -282,52 +320,56 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                 const isYes = option.label.toLowerCase() === 'yes' || index === 0;
                 
                 return (
-                  <Button
-                    key={option.id}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleVote(option.id);
-                    }}
-                    disabled={loading || (!!selectedOption && selectedOption !== option.id)}
-                    className={`relative h-12 sm:h-14 px-4 font-bold text-sm sm:text-base rounded-xl transition-all overflow-hidden border-2 ${
-                      isYes 
-                        ? 'border-green-500 text-green-900 hover:border-green-600 bg-white' 
-                        : 'border-red-500 text-red-900 hover:border-red-600 bg-white'
-                    } ${
-                      isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
-                    } ${
-                      isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
-                    }`}
-                    variant="outline"
-                  >
-                    {/* Progress bar background - same color as border */}
-                    <div 
-                      className={`absolute inset-0 transition-all duration-700 ease-out ${
+                  <div key={option.id} className="flex flex-col items-center gap-1">
+                    <Button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleVote(option.id);
+                      }}
+                      disabled={loading || (!!selectedOption && selectedOption !== option.id)}
+                      className={`relative h-12 sm:h-14 w-full px-4 font-bold text-sm sm:text-base rounded-xl transition-all overflow-hidden border-2 ${
                         isYes 
-                          ? 'bg-green-500' 
-                          : 'bg-red-500'
+                          ? 'border-green-500 text-green-900 hover:border-green-600 bg-white' 
+                          : 'border-red-500 text-red-900 hover:border-red-600 bg-white'
+                      } ${
+                        isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
+                      } ${
+                        isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
                       }`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                    {/* Button content */}
-                    <div className="relative z-10 flex items-center justify-between w-full">
-                      <span className="font-bold">{option.label}</span>
-                      {totalVotes > 0 && (
-                        <span className="text-xs sm:text-sm font-bold text-white bg-black/30 px-2 py-0.5 rounded-md">
-                          {percentage.toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                  </Button>
+                      variant="outline"
+                    >
+                      {/* Progress bar background - same color as border */}
+                      <div 
+                        className={`absolute inset-0 transition-all duration-700 ease-out ${
+                          isYes 
+                            ? 'bg-green-500' 
+                            : 'bg-red-500'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                      {/* Button content */}
+                      <div className="relative z-10">
+                        <span className="font-bold">{option.label}</span>
+                      </div>
+                    </Button>
+                    {/* Percentage below button */}
+                    {totalVotes > 0 && (
+                      <span className="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-400">
+                        {percentage.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
                 );
               })}
+              </div>
             </div>
           )}
 
           {/* TEMPLATE 2: THREE-OPTION HORIZONTAL - With Smaller Middle Button */}
           {displayTemplate === 'three-option-horizontal' && (
-            <div className="flex gap-2 sm:gap-3 poll-buttons-horizontal">
+            <div className="space-y-2">
+              <div className="flex gap-2 sm:gap-3 poll-buttons-horizontal">
               {pollOptions.map((option, index) => {
                 const percentage = getPercentage(option.votes);
                 const isSelected = selectedOption === option.id;
@@ -335,71 +377,77 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                 const isTieOption = index === 1 || option.label.toLowerCase().includes('tie') || option.label.toLowerCase().includes('draw');
                 
                 // Color scheme for three options - solid colors, border and progress match
-                // Blue (positive/Team A), Gray (tie/neutral), Green (positive/Team B)
+                // Green (first option), Amber (tie/neutral), Red (last option)
                 const getColorScheme = () => {
                   if (index === 0) return { 
-                    border: 'border-blue-500', 
-                    bg: 'bg-blue-500', 
-                    text: 'text-blue-900',
-                    hover: 'hover:border-blue-600'
-                  };
-                  if (isTieOption) return { 
-                    border: 'border-gray-500', 
-                    bg: 'bg-gray-500', 
-                    text: 'text-gray-900',
-                    hover: 'hover:border-gray-600'
-                  };
-                  return { 
                     border: 'border-green-500', 
                     bg: 'bg-green-500', 
                     text: 'text-green-900',
                     hover: 'hover:border-green-600'
+                  };
+                  if (isTieOption) return { 
+                    border: 'border-amber-500', 
+                    bg: 'bg-amber-500', 
+                    text: 'text-amber-900',
+                    hover: 'hover:border-amber-600'
+                  };
+                  return { 
+                    border: 'border-red-500', 
+                    bg: 'bg-red-500', 
+                    text: 'text-red-900',
+                    hover: 'hover:border-red-600'
                   };
                 };
                 
                 const colors = getColorScheme();
                 
                 return (
-                  <Button
-                    key={option.id}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleVote(option.id);
-                    }}
-                    disabled={loading || (!!selectedOption && selectedOption !== option.id)}
-                    className={`relative h-12 sm:h-14 px-2 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition-all overflow-hidden border-2 bg-white ${
-                      colors.border
-                    } ${
-                      colors.text
-                    } ${
-                      colors.hover
-                    } ${
+                  <div 
+                    key={option.id} 
+                    className={`flex flex-col items-center gap-1 ${
                       isTieOption ? 'w-20 sm:w-24 flex-shrink-0' : 'flex-1'
-                    } ${
-                      isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
-                    } ${
-                      isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
                     }`}
-                    variant="outline"
                   >
-                    {/* Progress bar background */}
-                    <div 
-                      className={`absolute inset-0 transition-all duration-700 ease-out ${colors.bg}`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                    {/* Button content */}
-                    <div className="relative z-10 flex flex-col items-center justify-center gap-0.5">
-                      <span className="font-bold leading-tight">{option.label}</span>
-                      {totalVotes > 0 && (
-                        <span className="text-[10px] sm:text-xs font-bold text-white bg-black/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                          {percentage.toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                  </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleVote(option.id);
+                      }}
+                      disabled={loading || (!!selectedOption && selectedOption !== option.id)}
+                      className={`relative h-12 sm:h-14 w-full px-2 sm:px-4 font-bold text-xs sm:text-sm rounded-xl transition-all overflow-hidden border-2 bg-white ${
+                        colors.border
+                      } ${
+                        colors.text
+                      } ${
+                        colors.hover
+                      } ${
+                        isSelected ? 'ring-2 ring-primary ring-offset-2 opacity-100 scale-[1.02]' : selectedOption ? 'opacity-60' : 'opacity-100 hover:scale-[1.02]'
+                      } ${
+                        isWinner ? 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse' : ''
+                      }`}
+                      variant="outline"
+                    >
+                      {/* Progress bar background */}
+                      <div 
+                        className={`absolute inset-0 transition-all duration-700 ease-out ${colors.bg}`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                      {/* Button content */}
+                      <div className="relative z-10">
+                        <span className="font-bold leading-tight">{option.label}</span>
+                      </div>
+                    </Button>
+                    {/* Percentage below button */}
+                    {totalVotes > 0 && (
+                      <span className="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-400">
+                        {percentage.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
                 );
               })}
+              </div>
             </div>
           )}
 
@@ -414,14 +462,14 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                 // Color scheme for multiple options - auto-assign based on index, border and progress match
                 const getColorScheme = () => {
                   const colors = [
-                    { border: 'border-primary', bg: 'bg-primary', text: 'text-primary-foreground', hover: 'hover:border-primary/80' },
+                    { border: 'border-green-500', bg: 'bg-green-500', text: 'text-green-900', hover: 'hover:border-green-600' },
+                    { border: 'border-amber-500', bg: 'bg-amber-500', text: 'text-amber-900', hover: 'hover:border-amber-600' },
+                    { border: 'border-red-500', bg: 'bg-red-500', text: 'text-red-900', hover: 'hover:border-red-600' },
                     { border: 'border-purple-500', bg: 'bg-purple-500', text: 'text-purple-900', hover: 'hover:border-purple-600' },
-                    { border: 'border-orange-500', bg: 'bg-orange-500', text: 'text-orange-900', hover: 'hover:border-orange-600' },
+                    { border: 'border-blue-500', bg: 'bg-blue-500', text: 'text-blue-900', hover: 'hover:border-blue-600' },
                     { border: 'border-teal-500', bg: 'bg-teal-500', text: 'text-teal-900', hover: 'hover:border-teal-600' },
                     { border: 'border-pink-500', bg: 'bg-pink-500', text: 'text-pink-900', hover: 'hover:border-pink-600' },
                     { border: 'border-indigo-500', bg: 'bg-indigo-500', text: 'text-indigo-900', hover: 'hover:border-indigo-600' },
-                    { border: 'border-rose-500', bg: 'bg-rose-500', text: 'text-rose-900', hover: 'hover:border-rose-600' },
-                    { border: 'border-cyan-500', bg: 'bg-cyan-500', text: 'text-cyan-900', hover: 'hover:border-cyan-600' },
                   ];
                   return colors[index % colors.length];
                 };
@@ -472,8 +520,8 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
 
           {/* TEMPLATE 3: MULTI YES/NO - Vertical List with Dual Buttons */}
           {displayTemplate === 'multi-yes-no' && (() => {
-            // Sort options by votes (descending) and limit to top 2 if compact mode
-            const sortedOptions = [...pollOptions].sort((a, b) => b.votes - a.votes);
+            // Sort options by total yes votes (descending) and limit to top 2 if compact mode
+            const sortedOptions = [...pollOptions].sort((a, b) => (b.votesYes || 0) - (a.votesYes || 0));
             const displayOptions = isCompact && pollOptions.length > 2 
               ? sortedOptions.slice(0, 2) 
               : sortedOptions;
@@ -482,7 +530,10 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
             return (
               <div className="space-y-1.5">
                 {displayOptions.map((option, index) => {
-                const percentage = getPercentage(option.votes);
+                const yesVotes = option.votesYes || 0;
+                const noVotes = option.votesNo || 0;
+                const optionTotal = yesVotes + noVotes;
+                const yesPercentage = optionTotal > 0 ? (yesVotes / optionTotal) * 100 : 0;
                 const isSelectedYes = selectedOption === `${option.id}-yes`;
                 const isSelectedNo = selectedOption === `${option.id}-no`;
                 const isWinner = winningOptionId === option.id;
@@ -506,20 +557,20 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                             </span>
                           )}
                         </div>
-                        {showProbability && totalVotes > 0 && (
+                        {optionTotal > 0 && (
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
                               <div 
                                 className={`h-full transition-all duration-700 ${
-                                  percentage >= 50 ? 'bg-green-500' : percentage >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+                                  yesPercentage >= 50 ? 'bg-green-500' : yesPercentage >= 30 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}
-                                style={{ width: `${percentage}%` }}
+                                style={{ width: `${yesPercentage}%` }}
                               />
                             </div>
                             <span className={`text-[10px] sm:text-xs font-bold tabular-nums ${
-                              percentage >= 50 ? 'text-green-600' : percentage >= 30 ? 'text-yellow-600' : 'text-red-600'
+                              yesPercentage >= 50 ? 'text-green-600' : yesPercentage >= 30 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
-                              {percentage.toFixed(0)}%
+                              {yesPercentage.toFixed(0)}%
                             </span>
                           </div>
                         )}
@@ -635,7 +686,12 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
               <button
                 className="flex items-center gap-1 p-1 rounded-md hover:bg-muted/50 transition-colors"
                 aria-label="View comments"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const slug = createSlug(poll.question);
+                  router.push(`/prediction?id=${poll.id}&q=${slug}#comments-section`);
+                }}
               >
                 <svg
                   className="w-4 h-4 text-muted-foreground/60"

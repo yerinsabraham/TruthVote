@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '@/lib/firebase/config';
 
 interface AuthContextType {
@@ -11,6 +12,7 @@ interface AuthContextType {
   userProfile: any | null;
   loading: boolean;
   isAdmin: boolean;
+  refreshRank: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   loading: true,
   isAdmin: false,
+  refreshRank: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -25,6 +28,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Function to refresh user's rank
+  const refreshRank = async () => {
+    if (!user) return;
+    
+    try {
+      const functions = getFunctions();
+      const recalculateMyRank = httpsCallable(functions, 'recalculateMyRank');
+      const result = await recalculateMyRank({});
+      const data = result.data as any;
+      
+      if (data.success) {
+        // Reload user profile to get updated rank
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const profileData = userDoc.data();
+          setUserProfile({ id: userDoc.id, ...profileData });
+        }
+        console.log('Rank auto-refreshed:', data.rankPercentage, '%');
+      }
+    } catch (error) {
+      console.error('Error auto-refreshing rank:', error);
+    }
+  };
 
   useEffect(() => {
     // Set a maximum loading time of 10 seconds
@@ -63,6 +90,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = { id: userDoc.id, ...profileData };
             setUserProfile(profile);
           }
+          
+          // Auto-refresh rank in background (don't await to avoid blocking)
+          setTimeout(async () => {
+            try {
+              const functions = getFunctions();
+              const recalculateMyRank = httpsCallable(functions, 'recalculateMyRank');
+              const result = await recalculateMyRank({});
+              const data = result.data as any;
+              
+              if (data.success) {
+                // Reload user profile to get updated rank
+                const updatedUserDoc = await getDoc(doc(db, 'users', user.uid));
+                if (updatedUserDoc.exists()) {
+                  const updatedProfileData = updatedUserDoc.data();
+                  setUserProfile({ id: updatedUserDoc.id, ...updatedProfileData });
+                }
+                console.log('Rank auto-refreshed:', data.rankPercentage, '%');
+              }
+            } catch (error) {
+              console.error('Error auto-refreshing rank:', error);
+            }
+          }, 1000); // Delay 1 second to not block initial load
+          
         } catch (error) {
           console.error('Error loading user data:', error);
           // Continue anyway - user is authenticated even if profile fails to load
@@ -82,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, refreshRank }}>
       {children}
     </AuthContext.Provider>
   );

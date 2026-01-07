@@ -12,7 +12,13 @@ export function useVote() {
   const [hasVoted, setHasVoted] = useState(false);
   const { user } = useAuth();
 
-  const submitVote = useCallback(async (predictionId: string, option: string, predictionQuestion: string, predictionCategory: string) => {
+  const submitVote = useCallback(async (
+    predictionId: string, 
+    option: string, 
+    predictionQuestion: string, 
+    predictionCategory: string,
+    optionLabel?: string
+  ) => {
     if (!user) {
       toast.error('Please sign in to vote');
       return false;
@@ -20,13 +26,18 @@ export function useVote() {
 
     setLoading(true);
     try {
+      // Get user's display name from auth context
+      const userDisplayName = user.displayName || user.email?.split('@')[0] || 'Anonymous';
+      
       // Use service layer instead of direct Firebase
       const result = await votesService.submitVote(
         predictionId,
         user.uid,
         option,
         predictionQuestion,
-        predictionCategory
+        predictionCategory,
+        userDisplayName,
+        optionLabel
       );
 
       if (!result.success) {

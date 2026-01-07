@@ -48,9 +48,9 @@ export default function AdminLayout({ children, activeTab, onTabChange }: AdminL
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-4">
             <Button
@@ -60,9 +60,9 @@ export default function AdminLayout({ children, activeTab, onTabChange }: AdminL
               className="lg:hidden hover:bg-gray-100 border border-gray-300"
             >
               {sidebarOpen ? (
-                <X size={20} className="text-gray-900" />
+                <X size={20} className="text-gray-900 dark:text-white" />
               ) : (
-                <Menu size={20} className="text-gray-900" />
+                <Menu size={20} className="text-gray-900 dark:text-white" />
               )}
             </Button>
             <Button
@@ -75,7 +75,7 @@ export default function AdminLayout({ children, activeTab, onTabChange }: AdminL
               </svg>
               <span className="hidden sm:inline text-sm">Go to App</span>
             </Button>
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Admin</h1>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Admin</h1>
           </div>
           <Button 
             variant="outline" 
@@ -94,7 +94,7 @@ export default function AdminLayout({ children, activeTab, onTabChange }: AdminL
         <aside
           className={`${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } fixed lg:sticky lg:translate-x-0 top-0 left-0 z-30 w-64 h-screen bg-white border-r border-gray-200 transition-transform duration-200 ease-in-out pt-16 lg:pt-0 overflow-y-auto`}
+          } fixed lg:sticky lg:translate-x-0 top-0 left-0 z-30 w-64 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 ease-in-out pt-16 lg:pt-0 overflow-y-auto`}
         >
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
@@ -108,8 +108,8 @@ export default function AdminLayout({ children, activeTab, onTabChange }: AdminL
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeTab === item.id
-                      ? 'bg-blue-50 text-blue-600 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <Icon size={20} />

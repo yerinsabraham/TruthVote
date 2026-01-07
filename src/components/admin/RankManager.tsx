@@ -244,12 +244,12 @@ export default function RankManager() {
                   <p className="text-sm text-blue-700 mb-1">Current Rank</p>
                   <p className="text-xl font-bold capitalize">{foundUser.currentRank}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Progress</p>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Progress</p>
                   <p className="text-xl font-bold">{foundUser.rankPercentage}%</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Total Predictions</p>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Predictions</p>
                   <p className="text-xl font-bold">{foundUser.totalPredictions}</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
@@ -271,9 +271,9 @@ export default function RankManager() {
           
           {foundUser && (
             <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">User: {foundUser.displayName}</p>
-                <p className="text-sm text-gray-600 capitalize">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">User: {foundUser.displayName}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                   Current Rank: <span className="font-semibold">{foundUser.currentRank}</span>
                 </p>
               </div>

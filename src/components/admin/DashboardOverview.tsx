@@ -119,7 +119,7 @@ export default function DashboardOverview() {
         <h2 className="text-2xl sm:text-3xl font-bold">Dashboard</h2>
         <button
           onClick={loadStats}
-          className="px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border rounded-lg w-full sm:w-auto"
+          className="px-3 sm:px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border dark:border-gray-700 rounded-lg w-full sm:w-auto"
         >
           Refresh
         </button>

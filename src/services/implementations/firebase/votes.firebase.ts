@@ -22,7 +22,9 @@ export class FirebaseVotesService implements VotesService {
     userId: string,
     option: string,
     predictionQuestion: string,
-    predictionCategory: string
+    predictionCategory: string,
+    userDisplayName?: string,
+    optionLabel?: string
   ): Promise<{ success: boolean; message?: string }> {
     try {
       // Check if user already voted
@@ -34,13 +36,28 @@ export class FirebaseVotesService implements VotesService {
         return { success: false, message: 'You have already voted on this prediction' };
       }
 
+      // Parse option for multi-yes-no format (e.g., "A-yes" or "A-no")
+      let actualOption = option;
+      let voteType: 'yes' | 'no' | 'regular' = 'regular';
+      
+      if (option.includes('-yes')) {
+        actualOption = option.replace('-yes', '');
+        voteType = 'yes';
+      } else if (option.includes('-no')) {
+        actualOption = option.replace('-no', '');
+        voteType = 'no';
+      }
+
       // Create vote document
       const voteData: any = {
         predictionId,
         userId,
-        option,
+        option: actualOption, // Store the base option (e.g., 'A', 'B')
+        voteType, // Store whether it's yes, no, or regular
         votedAt: Timestamp.now(),
         predictionQuestion,
+        userDisplayName: userDisplayName || 'Anonymous',
+        optionLabel: optionLabel || actualOption,
       };
       
       // Only add predictionCategory if it's defined
@@ -57,10 +74,19 @@ export class FirebaseVotesService implements VotesService {
       
       // Support new options array format
       if (predictionData?.options) {
-        const optionIndex = predictionData.options.findIndex((opt: any) => opt.id === option);
+        const optionIndex = predictionData.options.findIndex((opt: any) => opt.id === actualOption);
         if (optionIndex !== -1) {
           const updatedOptions = [...predictionData.options];
-          updatedOptions[optionIndex].votes = (updatedOptions[optionIndex].votes || 0) + 1;
+          
+          // Update the appropriate vote count based on vote type
+          if (voteType === 'yes') {
+            updatedOptions[optionIndex].votesYes = (updatedOptions[optionIndex].votesYes || 0) + 1;
+          } else if (voteType === 'no') {
+            updatedOptions[optionIndex].votesNo = (updatedOptions[optionIndex].votesNo || 0) + 1;
+          } else {
+            updatedOptions[optionIndex].votes = (updatedOptions[optionIndex].votes || 0) + 1;
+          }
+          
           await updateDoc(predictionRef, {
             options: updatedOptions,
             totalVotes: increment(1)
@@ -68,7 +94,7 @@ export class FirebaseVotesService implements VotesService {
         }
       } else {
         // Legacy format support
-        const updateField = option === 'A' ? 'voteCountA' : 'voteCountB';
+        const updateField = actualOption === 'A' ? 'voteCountA' : 'voteCountB';
         await updateDoc(predictionRef, {
           [updateField]: increment(1),
         });
@@ -106,7 +132,17 @@ export class FirebaseVotesService implements VotesService {
       const voteDoc = await getDoc(voteRef);
 
       if (voteDoc.exists()) {
-        return voteDoc.data().option;
+        const data = voteDoc.data();
+        const option = data.option;
+        const voteType = data.voteType;
+        
+        // Reconstruct the full vote string for multi-yes-no format
+        if (voteType === 'yes') {
+          return `${option}-yes`;
+        } else if (voteType === 'no') {
+          return `${option}-no`;
+        }
+        return option;
       }
       return null;
     } catch (error) {

@@ -32,7 +32,9 @@ export interface VotesService {
     userId: string,
     option: string,
     predictionQuestion: string,
-    predictionCategory: string
+    predictionCategory: string,
+    userDisplayName?: string,
+    optionLabel?: string
   ): Promise<{ success: boolean; message?: string }>;
 
   /**

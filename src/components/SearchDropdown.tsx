@@ -19,6 +19,15 @@ import {
   Mountain
 } from 'lucide-react';
 
+// Helper function to create URL-friendly slug
+function createSlug(question: string): string {
+  return question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 60);
+}
+
 // Map category names to icons
 const categoryIcons: Record<string, any> = {
   'Politics': Landmark,
@@ -181,7 +190,7 @@ export function SearchDropdown({ searchQuery, onSearchChange, isOpen, onClose }:
                     {filteredPredictions.map(prediction => (
                       <Link
                         key={prediction.id}
-                        href={`/prediction?id=${prediction.id}`}
+                        href={`/prediction?id=${prediction.id}&q=${createSlug(prediction.question)}`}
                         onClick={() => {
                           onClose();
                         }}
