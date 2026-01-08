@@ -377,7 +377,7 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                 const isTieOption = index === 1 || option.label.toLowerCase().includes('tie') || option.label.toLowerCase().includes('draw');
                 
                 // Color scheme for three options - solid colors, border and progress match
-                // Green (first option), Amber (tie/neutral), Red (last option)
+                // Green (first option), Blue (tie/neutral), Red (last option)
                 const getColorScheme = () => {
                   if (index === 0) return { 
                     border: 'border-green-500', 
@@ -386,10 +386,10 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                     hover: 'hover:border-green-600'
                   };
                   if (isTieOption) return { 
-                    border: 'border-amber-500', 
-                    bg: 'bg-amber-500', 
-                    text: 'text-amber-900',
-                    hover: 'hover:border-amber-600'
+                    border: 'border-blue-500', 
+                    bg: 'bg-blue-500', 
+                    text: 'text-blue-900',
+                    hover: 'hover:border-blue-600'
                   };
                   return { 
                     border: 'border-red-500', 
@@ -561,15 +561,11 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <div className="flex-1 h-1 bg-muted/50 rounded-full overflow-hidden">
                               <div 
-                                className={`h-full transition-all duration-700 ${
-                                  yesPercentage >= 50 ? 'bg-green-500' : yesPercentage >= 30 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`}
+                                className="h-full transition-all duration-700 bg-primary"
                                 style={{ width: `${yesPercentage}%` }}
                               />
                             </div>
-                            <span className={`text-[10px] sm:text-xs font-bold tabular-nums ${
-                              yesPercentage >= 50 ? 'text-green-600' : yesPercentage >= 30 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
+                            <span className="text-[10px] sm:text-xs font-bold tabular-nums text-primary">
                               {yesPercentage.toFixed(0)}%
                             </span>
                           </div>
@@ -587,8 +583,8 @@ export function PollCard({ poll, onVote, isCompact = false }: PollCardProps) {
                           disabled={loading || (!!selectedOption && selectedOption !== `${option.id}-yes`)}
                           className={`h-6 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-xs font-bold rounded-md border transition-all ${
                             isSelectedYes 
-                              ? 'bg-blue-500 border-blue-600 text-white shadow-sm' 
-                              : 'bg-blue-500/10 border-blue-500/40 text-blue-700 hover:bg-blue-500/20 hover:border-blue-500/60'
+                              ? 'bg-green-500 border-green-600 text-white shadow-sm' 
+                              : 'bg-green-500/10 border-green-500/40 text-green-700 hover:bg-green-500/20 hover:border-green-500/60'
                           } ${
                             selectedOption && !isSelectedYes ? 'opacity-40' : ''
                           }`}

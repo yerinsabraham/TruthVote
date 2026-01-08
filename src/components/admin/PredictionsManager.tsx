@@ -817,21 +817,40 @@ export default function PredictionsManager() {
 
                 <div>
                   <Label htmlFor="prediction-subcategory">Subcategory (optional)</Label>
-                  <select
-                    id="prediction-subcategory"
-                    name="subcategory"
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                    className="w-full border border-border bg-background rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
-                    disabled={!formData.categoryId}
-                  >
-                    <option value="">None</option>
-                    {formData.categoryId && categories.find(c => c.id === formData.categoryId)?.subcategories?.map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
+                  <div className="flex gap-2">
+                    <select
+                      id="prediction-subcategory"
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                      className="flex-1 border border-border bg-background rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
+                      disabled={!formData.categoryId}
+                    >
+                      <option value="">None</option>
+                      {formData.categoryId && categories.find(c => c.id === formData.categoryId)?.subcategories?.map((sub) => (
+                        <option key={sub} value={sub}>{sub}</option>
                     ))}
-                  </select>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        // Scroll to subcategory management section
+                        const el = document.getElementById('new-subcategory-input');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          el.focus();
+                        }
+                      }}
+                      title="Add Subcategory"
+                      disabled={!formData.categoryId}
+                    >
+                      <Plus size={16} />
+                    </Button>
+                  </div>
                   {formData.categoryId && categories.find(c => c.id === formData.categoryId)?.subcategories?.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">No subcategories yet. Add one below.</p>
+                    <p className="text-xs text-muted-foreground mt-1">No subcategories yet. Click + to add one.</p>
                   )}
                 </div>
               </div>

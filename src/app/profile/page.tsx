@@ -37,7 +37,9 @@ interface Vote {
   id: string;
   predictionId: string;
   predictionQuestion?: string;
+  predictionImage?: string;
   option: 'A' | 'B';
+  optionLabel?: string;
   votedAt: any;
   isCorrect?: boolean;
 }
@@ -99,7 +101,7 @@ function ProfileContent() {
           }
         }
 
-        // Load recent votes
+        // Load recent votes with prediction details
         try {
           const votesQuery = query(
             collection(db, 'votes'),
@@ -108,11 +110,53 @@ function ProfileContent() {
             limit(10)
           );
           const votesSnapshot = await getDocs(votesQuery);
-          const votesData = votesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Vote[];
-          setVotes(votesData);
+          
+          // Fetch prediction details for each vote
+          const votesWithDetails = await Promise.all(
+            votesSnapshot.docs.map(async (voteDoc) => {
+              const voteData = voteDoc.data();
+              let predictionQuestion = voteData.predictionQuestion;
+              let predictionImage = null;
+              let optionLabel = '';
+              
+              // Fetch prediction details if we have predictionId
+              if (voteData.predictionId) {
+                try {
+                  const predDoc = await getDoc(doc(db, 'predictions', voteData.predictionId));
+                  if (predDoc.exists()) {
+                    const predData = predDoc.data();
+                    predictionQuestion = predData.question || predictionQuestion;
+                    predictionImage = predData.imageUrl || null;
+                    
+                    // Get option label from options array or legacy fields
+                    if (predData.options && Array.isArray(predData.options)) {
+                      const selectedOption = predData.options.find((opt: any) => opt.id === voteData.option);
+                      optionLabel = selectedOption?.label || '';
+                    } else if (voteData.option === 'A' && predData.optionA) {
+                      optionLabel = predData.optionA;
+                    } else if (voteData.option === 'B' && predData.optionB) {
+                      optionLabel = predData.optionB;
+                    }
+                  }
+                } catch (err) {
+                  console.log('Error fetching prediction:', err);
+                }
+              }
+              
+              return {
+                id: voteDoc.id,
+                predictionId: voteData.predictionId,
+                predictionQuestion,
+                predictionImage,
+                option: voteData.option,
+                optionLabel,
+                votedAt: voteData.votedAt,
+                isCorrect: voteData.isCorrect,
+              } as Vote;
+            })
+          );
+          
+          setVotes(votesWithDetails);
         } catch (err) {
           console.log('Votes query error (index may still be building):', err);
         }
@@ -324,15 +368,25 @@ function ProfileContent() {
                 )}
               </div>
               
-              {/* Own Profile Indicator */}
+              {/* Own Profile Indicator & Settings */}
               {isOwnProfile && (
-                <div className="sm:absolute sm:top-4 sm:right-4">
+                <div className="sm:absolute sm:top-4 sm:right-4 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     Your Profile
                   </span>
+                  <a 
+                    href="/settings"
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    title="Settings"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </a>
                 </div>
               )}
             </div>
@@ -362,15 +416,14 @@ function ProfileContent() {
         {/* Rank Progress Card */}
         <Card className="mb-6 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <span className="text-2xl">📈</span>
-              Rank Progress
+            <div>
+              <h3 className="text-lg font-semibold">Rank Progress</h3>
               {profile?.rankPercentage !== undefined && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  ({profile.rankPercentage}%)
-                </span>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {profile.rankPercentage}% to next rank
+                </p>
               )}
-            </h3>
+            </div>
             
             {isOwnProfile && (
               <Button 
@@ -434,52 +487,111 @@ function ProfileContent() {
         </Card>
 
         {/* Recent Activity */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span className="text-2xl">🗳️</span>
-            Recent Votes
-          </h3>
+        <Card className="overflow-hidden">
+          <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
+            <h3 className="text-lg font-semibold">Recent Predictions</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {isOwnProfile ? 'Your voting history' : 'Voting history'}
+            </p>
+          </div>
           
           {votes.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-5xl mb-4">📊</div>
-              <h4 className="text-lg font-medium text-foreground mb-2">No votes yet</h4>
-              <p className="text-muted-foreground">
+            <div className="text-center py-16 px-6">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-foreground mb-2">No predictions yet</h4>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                 {isOwnProfile 
                   ? "Start voting on predictions to build your track record!" 
                   : "This user hasn't voted on any predictions yet."}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-border/30">
               {votes.map(vote => (
-                <div
+                <a
                   key={vote.id}
-                  className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  href={`/prediction?id=${vote.predictionId}`}
+                  className="flex gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
                 >
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: vote.option === 'A' ? '#3B82F6' : '#8B5CF6' }}
-                  >
-                    {vote.option}
+                  {/* Prediction Image */}
+                  <div className="flex-shrink-0">
+                    {vote.predictionImage ? (
+                      <img 
+                        src={vote.predictionImage}
+                        alt=""
+                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-border/50"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">
-                      {vote.predictionQuestion || `Prediction ${vote.predictionId?.slice(0, 8) || 'Unknown'}`}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Voted Option {vote.option}
+                  
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 py-1">
+                    <h4 className="font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2">
+                      {vote.predictionQuestion || 'Prediction'}
+                    </h4>
+                    
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      {/* Vote Choice */}
+                      <span 
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-white"
+                        style={{ backgroundColor: vote.option === 'A' ? '#3B82F6' : '#8B5CF6' }}
+                      >
+                        Voted: {vote.optionLabel || `Option ${vote.option}`}
+                      </span>
+                      
+                      {/* Result Badge */}
                       {vote.isCorrect !== undefined && (
-                        <span className={`ml-2 font-medium ${vote.isCorrect ? 'text-green-500' : 'text-red-500'}`}>
-                          {vote.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                          vote.isCorrect 
+                            ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
+                            : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                        }`}>
+                          {vote.isCorrect ? (
+                            <>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Correct
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                              Incorrect
+                            </>
+                          )}
                         </span>
                       )}
-                    </p>
+                      
+                      {/* Date */}
+                      <span className="text-muted-foreground text-xs ml-auto">
+                        {vote.votedAt?.toDate?.()?.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: vote.votedAt?.toDate?.()?.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                        }) || ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {vote.votedAt?.toDate?.()?.toLocaleDateString() || ''}
+                  
+                  {/* Arrow */}
+                  <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}

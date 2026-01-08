@@ -132,10 +132,13 @@ export async function signInWithGoogle() {
         rankPercentage: 0
       });
     } else {
-      // Update last login and last active
+      // Update last login, last active, and sync displayName/photoURL from Google
       await updateDoc(doc(db, 'users', user.uid), {
         lastLoginAt: serverTimestamp(),
-        lastActive: serverTimestamp()
+        lastActive: serverTimestamp(),
+        // Always sync displayName and photoURL from Google OAuth
+        ...(user.displayName && { displayName: user.displayName }),
+        ...(user.photoURL && { photoURL: user.photoURL })
       });
     }
     
@@ -187,10 +190,13 @@ export async function signInWithApple() {
         rankPercentage: 0
       });
     } else {
-      // Update last login and last active
+      // Update last login, last active, and sync displayName/photoURL from Apple
       await updateDoc(doc(db, 'users', user.uid), {
         lastLoginAt: serverTimestamp(),
-        lastActive: serverTimestamp()
+        lastActive: serverTimestamp(),
+        // Sync displayName and photoURL from Apple OAuth (if available)
+        ...(user.displayName && { displayName: user.displayName }),
+        ...(user.photoURL && { photoURL: user.photoURL })
       });
     }
     
