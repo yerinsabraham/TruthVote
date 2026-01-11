@@ -15,6 +15,20 @@
       ]
     },
     {
+      "collectionGroup": "votes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "predictionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "votedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "predictions",
       "queryScope": "COLLECTION",
       "fields": [

@@ -24,7 +24,8 @@ export class FirebaseVotesService implements VotesService {
     predictionQuestion: string,
     predictionCategory: string,
     userDisplayName?: string,
-    optionLabel?: string
+    optionLabel?: string,
+    userPhotoURL?: string
   ): Promise<{ success: boolean; message?: string }> {
     try {
       // Check if user already voted
@@ -48,15 +49,20 @@ export class FirebaseVotesService implements VotesService {
         voteType = 'no';
       }
 
-      // Create vote document
+      // Create vote document with activity feed compatible fields
+      const timestamp = Timestamp.now();
       const voteData: any = {
         predictionId,
+        pollId: predictionId, // Alias for activity feed compatibility
         userId,
         option: actualOption, // Store the base option (e.g., 'A', 'B')
         voteType, // Store whether it's yes, no, or regular
-        votedAt: Timestamp.now(),
+        yesNo: voteType !== 'regular' ? voteType : undefined, // For activity feed display
+        votedAt: timestamp,
+        timestamp: timestamp, // Alias for activity feed ordering
         predictionQuestion,
         userDisplayName: userDisplayName || 'Anonymous',
+        userPhotoURL: userPhotoURL || null,
         optionLabel: optionLabel || actualOption,
       };
       

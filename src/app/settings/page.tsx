@@ -285,7 +285,7 @@ export default function SettingsPage() {
                     </button>
                     
                     <a
-                      href="mailto:support@truthvote.app"
+                      href="mailto:info@truthvote.io"
                       className="w-full flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -296,7 +296,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <p className="font-medium">Contact Support</p>
-                          <p className="text-sm text-muted-foreground">support@truthvote.app</p>
+                          <p className="text-sm text-muted-foreground">info@truthvote.io</p>
                         </div>
                       </div>
                       <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -304,7 +304,7 @@ function ProfileContent() {
     );
   }
 
-  const rank = displayProfile.rank || 'novice';
+  const rank = displayProfile.currentRank || displayProfile.rank || 'novice';
   const rankColor = getRankColor(rank);
   const accuracyRate = displayProfile.accuracyRate ?? 0;
   const totalVotes = displayProfile.totalVotes ?? 0;
@@ -358,9 +358,11 @@ function ProfileContent() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                   {displayProfile.displayName || 'User'}
                 </h1>
-                <p className="text-muted-foreground mt-1">
-                  {displayProfile.email}
-                </p>
+                {displayProfile.bio && (
+                  <p className="text-muted-foreground mt-2 max-w-md">
+                    {displayProfile.bio}
+                  </p>
+                )}
                 {memberSince && (
                   <p className="text-sm text-muted-foreground mt-1">
                     Member since {memberSince}

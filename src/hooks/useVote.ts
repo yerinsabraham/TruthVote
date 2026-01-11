@@ -26,8 +26,9 @@ export function useVote() {
 
     setLoading(true);
     try {
-      // Get user's display name from auth context
+      // Get user's display name and photo from auth context
       const userDisplayName = user.displayName || user.email?.split('@')[0] || 'Anonymous';
+      const userPhotoURL = user.photoURL || undefined;
       
       // Use service layer instead of direct Firebase
       const result = await votesService.submitVote(
@@ -37,7 +38,8 @@ export function useVote() {
         predictionQuestion,
         predictionCategory,
         userDisplayName,
-        optionLabel
+        optionLabel,
+        userPhotoURL
       );
 
       if (!result.success) {
@@ -88,5 +90,52 @@ export function useVote() {
     }
   }, [user]);
 
-  return { submitVote, checkUserVote, getUserVotes, loading, hasVoted, setHasVoted };
+  const submitMultiYesNoVote = useCallback(async (
+    predictionId: string,
+    optionId: string,
+    yesNo: 'yes' | 'no',
+    predictionQuestion: string,
+    predictionCategory: string
+  ) => {
+    if (!user) {
+      toast.error('Please sign in to vote');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      // Combine option and yes/no into single option string
+      const combinedOption = `${optionId}-${yesNo}`;
+      const userDisplayName = user.displayName || user.email?.split('@')[0] || 'Anonymous';
+      const userPhotoURL = user.photoURL || undefined;
+      
+      const result = await votesService.submitVote(
+        predictionId,
+        user.uid,
+        combinedOption,
+        predictionQuestion,
+        predictionCategory,
+        userDisplayName,
+        `${optionId} - ${yesNo.charAt(0).toUpperCase() + yesNo.slice(1)}`,
+        userPhotoURL
+      );
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to submit vote');
+        setLoading(false);
+        return false;
+      }
+
+      setHasVoted(true);
+      setLoading(false);
+      return true;
+    } catch (error: any) {
+      console.error('Error submitting multi-yes-no vote:', error);
+      toast.error(error.message || 'Failed to submit vote');
+      setLoading(false);
+      return false;
+    }
+  }, [user]);
+
+  return { submitVote, submitMultiYesNoVote, checkUserVote, getUserVotes, loading, hasVoted, setHasVoted };
 }

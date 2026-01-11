@@ -53,7 +53,13 @@ export async function signUp(email: string, password: string, displayName: strin
       streak: 0,
       level: 1,
       rank: 'novice',
-      rankPercentage: 0
+      currentRank: 'Novice',
+      rankPercentage: 0,
+      currentRankStartDate: serverTimestamp(),
+      rankUpgradeHistory: [],
+      weeklyActivityCount: 0,
+      totalResolvedPredictions: 0,
+      totalShares: 0
     });
     
     return user;
@@ -129,7 +135,13 @@ export async function signInWithGoogle() {
         streak: 0,
         level: 1,
         rank: 'novice',
-        rankPercentage: 0
+        currentRank: 'Novice',
+        rankPercentage: 0,
+        currentRankStartDate: serverTimestamp(),
+        rankUpgradeHistory: [],
+        weeklyActivityCount: 0,
+        totalResolvedPredictions: 0,
+        totalShares: 0
       });
     } else {
       // Update last login, last active, and sync displayName/photoURL from Google
@@ -187,7 +199,13 @@ export async function signInWithApple() {
         streak: 0,
         level: 1,
         rank: 'novice',
-        rankPercentage: 0
+        currentRank: 'Novice',
+        rankPercentage: 0,
+        currentRankStartDate: serverTimestamp(),
+        rankUpgradeHistory: [],
+        weeklyActivityCount: 0,
+        totalResolvedPredictions: 0,
+        totalShares: 0
       });
     } else {
       // Update last login, last active, and sync displayName/photoURL from Apple

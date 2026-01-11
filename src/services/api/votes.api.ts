@@ -34,7 +34,8 @@ export interface VotesService {
     predictionQuestion: string,
     predictionCategory: string,
     userDisplayName?: string,
-    optionLabel?: string
+    optionLabel?: string,
+    userPhotoURL?: string
   ): Promise<{ success: boolean; message?: string }>;
 
   /**

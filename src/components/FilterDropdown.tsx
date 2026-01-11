@@ -82,7 +82,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
         className="gap-2 bg-white border-gray-200 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
       >
         <svg
-          className="w-4 h-4 text-gray-900"
+          className="w-4 h-4 text-gray-900 dark:text-white"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -98,20 +98,20 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+        <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50">
           <div className="p-4 space-y-3">
             {/* Sort By Section */}
             <div className="relative">
               <button
                 onClick={() => setActiveDropdown(activeDropdown === 'sortBy' ? null : 'sortBy')}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex flex-col items-start">
-                  <span className="text-xs text-gray-500">Sort By</span>
-                  <span className="text-sm font-semibold text-gray-900">{getSortByLabel()}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Sort By</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{getSortByLabel()}</span>
                 </div>
                 <svg
-                  className={`w-4 h-4 text-gray-900 transition-transform ${activeDropdown === 'sortBy' ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-900 dark:text-white transition-transform ${activeDropdown === 'sortBy' ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -121,7 +121,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
               </button>
               
               {activeDropdown === 'sortBy' && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.value}
@@ -129,7 +129,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
                       className={`w-full text-left px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
                         filters.sortBy === option.value
                           ? 'bg-primary text-white'
-                          : 'hover:bg-gray-100 text-gray-900'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                       }`}
                     >
                       {option.label}
@@ -143,14 +143,14 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
             <div className="relative">
               <button
                 onClick={() => setActiveDropdown(activeDropdown === 'status' ? null : 'status')}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex flex-col items-start">
-                  <span className="text-xs text-gray-500">Status</span>
-                  <span className="text-sm font-semibold text-gray-900">{getStatusLabel()}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Status</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{getStatusLabel()}</span>
                 </div>
                 <svg
-                  className={`w-4 h-4 text-gray-900 transition-transform ${activeDropdown === 'status' ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-900 dark:text-white transition-transform ${activeDropdown === 'status' ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -160,7 +160,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
               </button>
               
               {activeDropdown === 'status' && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
                   {STATUS_OPTIONS.map((option) => (
                     <button
                       key={option.value}
@@ -168,7 +168,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
                       className={`w-full text-left px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
                         filters.status === option.value
                           ? 'bg-primary text-white'
-                          : 'hover:bg-gray-100 text-gray-900'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                       }`}
                     >
                       {option.label}
@@ -182,14 +182,14 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
             <div className="relative">
               <button
                 onClick={() => setActiveDropdown(activeDropdown === 'frequency' ? null : 'frequency')}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <div className="flex flex-col items-start">
-                  <span className="text-xs text-gray-500">Frequency</span>
-                  <span className="text-sm font-semibold text-gray-900">{getFrequencyLabel()}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Frequency</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{getFrequencyLabel()}</span>
                 </div>
                 <svg
-                  className={`w-4 h-4 text-gray-900 transition-transform ${activeDropdown === 'frequency' ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-900 dark:text-white transition-transform ${activeDropdown === 'frequency' ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -199,7 +199,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
               </button>
               
               {activeDropdown === 'frequency' && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
                   {FREQUENCY_OPTIONS.map((option) => (
                     <button
                       key={option.value}
@@ -207,7 +207,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
                       className={`w-full text-left px-4 py-2 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
                         filters.frequency === option.value
                           ? 'bg-primary text-white'
-                          : 'hover:bg-gray-100 text-gray-900'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                       }`}
                     >
                       {option.label}
@@ -227,7 +227,7 @@ export function FilterDropdown({ filters, onFilterChange }: FilterDropdownProps)
                 });
                 setActiveDropdown(null);
               }}
-              className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-900 border-t border-gray-200 pt-3 transition-colors"
+              className="w-full px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border-t border-gray-200 dark:border-gray-600 pt-3 transition-colors"
             >
               Reset Filters
             </button>

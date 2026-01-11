@@ -1,4 +1,4 @@
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
@@ -6,6 +6,260 @@ const logger = require("firebase-functions/logger");
 // Initialize Firebase Admin
 admin.initializeApp();
 const db = admin.firestore();
+
+/**
+ * Share preview for social media crawlers
+ * Generates dynamic preview with question, options, and vote percentages
+ * URL: https://truthvote.io/share?id=PREDICTION_ID
+ */
+exports.sharePreview = onRequest({cors: true}, async (req, res) => {
+  try {
+    const predictionId = req.query.id;
+    logger.info('sharePreview called', { predictionId, userAgent: req.get('user-agent') });
+    
+    if (!predictionId) {
+      logger.info('No prediction ID, redirecting to home');
+      res.redirect('https://truthvote.io');
+      return;
+    }
+
+    // Detect crawlers
+    const userAgent = (req.get('user-agent') || '').toLowerCase();
+    const isCrawler = 
+      userAgent.includes('facebookexternalhit') ||
+      userAgent.includes('twitterbot') ||
+      userAgent.includes('whatsapp') ||
+      userAgent.includes('linkedinbot') ||
+      userAgent.includes('slackbot') ||
+      userAgent.includes('discordbot') ||
+      userAgent.includes('telegrambot') ||
+      userAgent.includes('bot') ||
+      userAgent.includes('crawl') ||
+      userAgent.includes('spider');
+    
+    logger.info('Crawler detection', { isCrawler, userAgent });
+
+    const baseUrl = 'https://truthvote.io';
+    const targetUrl = `${baseUrl}/prediction?id=${predictionId}`;
+
+    // Regular users get redirected
+    if (!isCrawler) {
+      logger.info('Not a crawler, redirecting to prediction page');
+      res.redirect(targetUrl);
+      return;
+    }
+
+    // Fetch prediction
+    logger.info('Fetching prediction from Firestore', { predictionId });
+    const predictionDoc = await db.collection('predictions').doc(predictionId).get();
+    
+    if (!predictionDoc.exists) {
+      logger.info('Prediction not found, redirecting to home');
+      res.redirect('https://truthvote.io');
+      return;
+    }
+    
+    logger.info('Prediction found, generating preview');
+
+    const prediction = predictionDoc.data();
+    const question = prediction.question || 'Make a Prediction';
+    const thumbnailUrl = prediction.imageUrl || '';
+    
+    // Build options data with vote percentages
+    let options = [];
+    let totalVotes = 0;
+    
+    if (prediction.optionA && prediction.optionB) {
+      const votesA = prediction.votesA || 0;
+      const votesB = prediction.votesB || 0;
+      totalVotes = votesA + votesB;
+      const percentA = totalVotes > 0 ? Math.round((votesA / totalVotes) * 100) : 50;
+      const percentB = totalVotes > 0 ? Math.round((votesB / totalVotes) * 100) : 50;
+      options = [
+        { label: prediction.optionA, percent: percentA },
+        { label: prediction.optionB, percent: percentB }
+      ];
+    } else if (prediction.options && Array.isArray(prediction.options) && prediction.options.length > 0) {
+      const isMultiYesNo = prediction.displayTemplate === 'multi-yes-no';
+      
+      if (isMultiYesNo) {
+        const sortedOptions = [...prediction.options].sort((a, b) => (b.votesYes || 0) - (a.votesYes || 0));
+        options = sortedOptions.slice(0, 3).map(opt => {
+          const total = (opt.votesYes || 0) + (opt.votesNo || 0);
+          const percent = total > 0 ? Math.round((opt.votesYes / total) * 100) : 50;
+          totalVotes += total;
+          return { label: opt.label, percent };
+        });
+      } else {
+        totalVotes = prediction.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+        options = prediction.options.slice(0, 3).map(opt => {
+          const percent = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+          return { label: opt.label, percent };
+        });
+      }
+    }
+
+    // Build rich description with options and percentages
+    const optionsText = options.map(o => `${o.label} (${o.percent}%)`).join(' vs ');
+    const description = optionsText 
+      ? `📊 ${optionsText} | ${totalVotes.toLocaleString()} votes | Vote now on TruthVote!` 
+      : 'Make your prediction on TruthVote!';
+
+    // Generate Cloudinary dynamic image URL
+    // Set your Cloudinary cloud name here
+    const CLOUDINARY_CLOUD_NAME = 'dgfdbfyeo';
+    
+    let imageUrl = thumbnailUrl || 'https://truthvote.io/assets/truthvote_logo.png';
+    
+    // Only generate Cloudinary URL if cloud name is configured
+    if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_CLOUD_NAME !== 'YOUR_CLOUD_NAME') {
+      try {
+        // Helper to encode text for Cloudinary URL
+        const encodeCloudinaryText = (text) => {
+          return encodeURIComponent(text)
+            .replace(/%2C/g, '%252C')
+            .replace(/%2F/g, '%252F');
+        };
+
+        // Truncate question if too long
+        const displayQuestion = question.length > 50 
+          ? question.substring(0, 47) + '...' 
+          : question;
+
+        // Build transformations array
+        let transforms = [];
+        
+        // Base: White background, 1200x630 (standard OG image size)
+        transforms.push('w_1200,h_630,c_fill,b_rgb:FFFFFF');
+        
+        // Add thumbnail on LEFT side (takes up ~45% of width)
+        if (thumbnailUrl) {
+          const encodedThumb = Buffer.from(thumbnailUrl).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          transforms.push(`l_fetch:${encodedThumb},w_520,h_550,c_fill,r_16,g_west,x_30,y_0`);
+        }
+        
+        // Right side content starts at x=580
+        const rightX = thumbnailUrl ? 580 : 50;
+        const contentWidth = thumbnailUrl ? 580 : 1100;
+        
+        // TruthVote logo/brand at top right area
+        transforms.push(`l_text:arial_20_bold:TRUTHVOTE,co_rgb:3B82F6,g_north_west,x_${rightX},y_35`);
+        
+        // Question text (split into 2 lines if needed)
+        const words = displayQuestion.split(' ');
+        let qLine1 = '';
+        let qLine2 = '';
+        const maxChars = thumbnailUrl ? 28 : 50;
+        for (const word of words) {
+          if (qLine1.length + word.length < maxChars) {
+            qLine1 = qLine1 ? qLine1 + ' ' + word : word;
+          } else {
+            qLine2 = qLine2 ? qLine2 + ' ' + word : word;
+          }
+        }
+        
+        transforms.push(`l_text:arial_26_bold:${encodeCloudinaryText(qLine1)},co_rgb:1F2937,g_north_west,x_${rightX},y_70`);
+        if (qLine2) {
+          transforms.push(`l_text:arial_26_bold:${encodeCloudinaryText(qLine2.substring(0, maxChars))},co_rgb:1F2937,g_north_west,x_${rightX},y_105`);
+        }
+        
+        // Options section - styled like actual UI
+        const optStartY = qLine2 ? 160 : 130;
+        const barWidth = thumbnailUrl ? 500 : 900;
+        
+        // For each option, create a "card-like" appearance
+        options.slice(0, 3).forEach((opt, i) => {
+          const optLabel = opt.label.length > 18 ? opt.label.substring(0, 15) + '...' : opt.label;
+          const yPos = optStartY + (i * 130);
+          const color = opt.percent > 50 ? '22C55E' : '3B82F6';
+          const bgColor = opt.percent > 50 ? 'DCFCE7' : 'DBEAFE';
+          
+          // Option container background (light colored box)
+          transforms.push(`l_text:arial_16:%20,co_rgb:${bgColor},b_rgb:${bgColor},g_north_west,x_${rightX},y_${yPos},w_${barWidth},h_100`);
+          
+          // Option label (left side)
+          transforms.push(`l_text:arial_22_bold:${encodeCloudinaryText(optLabel)},co_rgb:1F2937,g_north_west,x_${rightX + 15},y_${yPos + 15}`);
+          
+          // Large percentage (right side of the box)
+          transforms.push(`l_text:arial_36_bold:${opt.percent}%2525,co_rgb:${color},g_north_west,x_${rightX + barWidth - 100},y_${yPos + 12}`);
+          
+          // Progress bar background (gray line)
+          const barY = yPos + 60;
+          const progressBarBg = '_'.repeat(Math.floor(barWidth / 12));
+          transforms.push(`l_text:arial_14:${encodeCloudinaryText(progressBarBg)},co_rgb:E5E7EB,g_north_west,x_${rightX + 15},y_${barY}`);
+          
+          // Progress bar fill (colored portion based on percentage)
+          const fillWidth = Math.max(1, Math.floor((opt.percent / 100) * (barWidth / 12)));
+          if (fillWidth > 0) {
+            const progressBarFill = '_'.repeat(fillWidth);
+            transforms.push(`l_text:arial_14:${encodeCloudinaryText(progressBarFill)},co_rgb:${color},g_north_west,x_${rightX + 15},y_${barY}`);
+          }
+        });
+        
+        // Bottom bar with vote count and branding
+        transforms.push(`l_text:arial_18:${encodeCloudinaryText(totalVotes.toLocaleString() + ' votes')},co_rgb:6B7280,g_south_west,x_${rightX},y_30`);
+        transforms.push(`l_text:arial_18_bold:truthvote.io,co_rgb:3B82F6,g_south_east,x_50,y_30`);
+
+        // Use Wikipedia's 1x1 transparent PNG as base (Cloudinary will expand it)
+        const blankImageUrl = 'https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png';
+        
+        imageUrl = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/fetch/${transforms.join('/')}/${blankImageUrl}`;
+        
+        logger.info('Generated Cloudinary URL', { urlLength: imageUrl.length });
+      } catch (cloudinaryError) {
+        logger.error('Cloudinary URL generation failed, using fallback', cloudinaryError);
+        imageUrl = thumbnailUrl || 'https://truthvote.io/assets/truthvote_logo.png';
+      }
+    }
+
+    // Escape HTML
+    const esc = (text) => String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(question)} - TruthVote</title>
+  <meta name="description" content="${esc(description)}">
+  
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${targetUrl}">
+  <meta property="og:title" content="${esc(question)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="TruthVote">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${esc(question)}">
+  <meta name="twitter:description" content="${esc(description)}">
+  <meta name="twitter:image" content="${imageUrl}">
+  
+  <meta http-equiv="refresh" content="0;url=${targetUrl}">
+</head>
+<body>
+  <h1>${esc(question)}</h1>
+  <p>${esc(description)}</p>
+  <a href="${targetUrl}">Go to TruthVote</a>
+</body>
+</html>`;
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=120');
+    res.status(200).send(html);
+  } catch (error) {
+    logger.error('Share preview error:', error);
+    res.redirect('https://truthvote.io');
+  }
+});
 
 /**
  * Submit a vote for a prediction
@@ -147,6 +401,58 @@ exports.submitVote = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("Error submitting vote:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+/**
+ * Track when a user shares a prediction
+ * Increments user's share count for ranking rewards
+ */
+exports.trackShare = onCall(async (request) => {
+  const {auth, data} = request;
+
+  // Check authentication
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated");
+  }
+
+  const {predictionId, shareMethod} = data;
+
+  // Validate inputs
+  if (!predictionId) {
+    throw new HttpsError("invalid-argument", "Missing predictionId");
+  }
+
+  const userId = auth.uid;
+
+  try {
+    // Update user's share count
+    const userRef = db.collection("users").doc(userId);
+    await userRef.update({
+      totalShares: admin.firestore.FieldValue.increment(1),
+      lastActive: admin.firestore.Timestamp.now(),
+    });
+
+    // Optionally track share analytics
+    await db.collection("shares").add({
+      userId,
+      predictionId,
+      shareMethod: shareMethod || "unknown", // 'twitter', 'whatsapp', 'copy', 'native'
+      sharedAt: admin.firestore.Timestamp.now(),
+    });
+
+    logger.info(`Share tracked: ${userId} shared ${predictionId} via ${shareMethod}`);
+
+    return {
+      success: true,
+      message: "Share tracked successfully",
+    };
+  } catch (error) {
+    logger.error("Error tracking share:", error);
     if (error instanceof HttpsError) {
       throw error;
     }
@@ -548,15 +854,23 @@ exports.dailyRankRecalculation = onSchedule({
   try {
     logger.info("Starting daily rank recalculation job");
 
-    // Get all users with rank fields
+    // Get ALL users - some may have 'rank' field, others 'currentRank'
+    // Query all users and filter in code to handle both cases
     const usersSnapshot = await db
         .collection("users")
-        .where("currentRank", "!=", null)
         .get();
+
+    // Filter to only users who are actual user accounts (have createdAt)
+    const allUsers = usersSnapshot.docs.filter((doc) => {
+      const data = doc.data();
+      return data.createdAt !== undefined;
+    });
+
+    logger.info(`Found ${allUsers.length} users to process`);
 
     // Process in batches of 100
     const BATCH_SIZE = 100;
-    const users = usersSnapshot.docs;
+    const users = allUsers;
 
     for (let i = 0; i < users.length; i += BATCH_SIZE) {
       const batch = users.slice(i, i + BATCH_SIZE);
@@ -598,9 +912,11 @@ exports.dailyRankRecalculation = onSchedule({
               const accuracyRate = totalVotes > 0 ? (correctVotes / totalVotes) * 100 : 0;
 
               // Time score (0-100) - 50% weight for Novice/Amateur
-              // For Novice, next rank is Amateur which requires 7 days
-              // For Amateur, next rank is Analyst which requires 60 days
-              const currentRank = userData.currentRank || "Novice";
+              // Handle both 'currentRank' and legacy 'rank' field
+              // Normalize rank name (some might be lowercase)
+              let rawRank = userData.currentRank || userData.rank || "Novice";
+              // Capitalize first letter to ensure consistent format
+              const currentRank = rawRank.charAt(0).toUpperCase() + rawRank.slice(1).toLowerCase();
               
               // TIME_GATES: Days required to reach EACH rank from account creation
               const RANK_TIME_GATES = {
@@ -655,8 +971,11 @@ exports.dailyRankRecalculation = onSchedule({
               const minWeeks = MIN_WEEKS[currentRank] || 1;
               const consistencyScore = weeklyActivity >= minWeeks ? 85 : Math.min(85, (weeklyActivity / minWeeks) * 85);
 
-              // Volume score (0-100) - 5% weight for Novice/Amateur
+              // Volume/Engagement score (0-100) - includes predictions AND shares
+              // Shares boost engagement score significantly
               const totalPredictions = totalVotes;
+              const totalShares = userData.totalShares || 0;
+              
               const MIN_PREDICTIONS = {
                 "Novice": 3,
                 "Amateur": 10,
@@ -666,7 +985,14 @@ exports.dailyRankRecalculation = onSchedule({
                 "Master": 150,
               };
               const minPreds = MIN_PREDICTIONS[currentRank] || 3;
-              const volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+              
+              // Base volume score from predictions
+              let volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+              
+              // Shares bonus: Each share adds 2% to volume score (max 20% bonus)
+              // This rewards active community engagement
+              const shareBonus = Math.min(20, totalShares * 2);
+              volumeScore = Math.min(100, volumeScore + shareBonus);
 
               // Weights for Novice and Amateur
               const WEIGHTS = {
@@ -688,18 +1014,41 @@ exports.dailyRankRecalculation = onSchedule({
 
               const finalPercentage = Math.min(100, Math.max(0, rawPercentage));
 
-              // Update user rank percentage
-              await db.collection("users").doc(userId).update({
+              // Build update object - always set currentRank to ensure consistency
+              const updateData = {
                 rankPercentage: Math.round(finalPercentage * 10) / 10,
                 lastRankUpdateAt: admin.firestore.Timestamp.now(),
+                currentRank: currentRank, // Ensure currentRank is always set
                 // Store breakdown for debugging
                 rankBreakdown: {
                   timeScore: Math.round(timeScore),
                   accuracyScore: Math.round(accuracyScore),
                   consistencyScore: Math.round(consistencyScore),
                   volumeScore: Math.round(volumeScore),
+                  accountAgeDays: accountAgeDays,
+                  totalShares: totalShares,
+                  shareBonus: shareBonus,
                 },
-              });
+              };
+
+              // If user is missing currentRankStartDate, set it to createdAt
+              if (!userData.currentRankStartDate) {
+                updateData.currentRankStartDate = createdAt;
+              }
+
+              // Initialize missing rank-related fields
+              if (userData.rankUpgradeHistory === undefined) {
+                updateData.rankUpgradeHistory = [];
+              }
+              if (userData.weeklyActivityCount === undefined) {
+                updateData.weeklyActivityCount = 0;
+              }
+              if (userData.totalResolvedPredictions === undefined) {
+                updateData.totalResolvedPredictions = 0;
+              }
+
+              // Update user rank percentage
+              await db.collection("users").doc(userId).update(updateData);
 
               processedUsers++;
 
@@ -876,7 +1225,10 @@ exports.manualRankRecalculation = onCall({
     const correctVotes = userData.correctVotes || 0;
     const accuracyRate = totalVotes > 0 ? (correctVotes / totalVotes) * 100 : 0;
 
-    const currentRank = userData.currentRank || "Novice";
+    // Handle both 'currentRank' and legacy 'rank' field
+    let rawRank = userData.currentRank || userData.rank || "Novice";
+    // Capitalize first letter to ensure consistent format
+    const currentRank = rawRank.charAt(0).toUpperCase() + rawRank.slice(1).toLowerCase();
     
     // TIME_GATES: Days required to reach EACH rank from account creation
     const RANK_TIME_GATES = {
@@ -929,7 +1281,10 @@ exports.manualRankRecalculation = onCall({
     const minWeeks = MIN_WEEKS[currentRank] || 1;
     const consistencyScore = weeklyActivity >= minWeeks ? 85 : Math.min(85, (weeklyActivity / minWeeks) * 85);
 
+    // Volume/Engagement score (0-100) - includes predictions AND shares
     const totalPredictions = totalVotes;
+    const totalShares = userData.totalShares || 0;
+    
     const MIN_PREDICTIONS = {
       "Novice": 3,
       "Amateur": 10,
@@ -939,7 +1294,13 @@ exports.manualRankRecalculation = onCall({
       "Master": 150,
     };
     const minPreds = MIN_PREDICTIONS[currentRank] || 3;
-    const volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+    
+    // Base volume score from predictions
+    let volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+    
+    // Shares bonus: Each share adds 2% to volume score (max 20% bonus)
+    const shareBonus = Math.min(20, totalShares * 2);
+    volumeScore = Math.min(100, volumeScore + shareBonus);
 
     const WEIGHTS = {
       "Novice": {time: 0.50, accuracy: 0.30, consistency: 0.15, volume: 0.05},
@@ -959,17 +1320,38 @@ exports.manualRankRecalculation = onCall({
 
     const finalPercentage = Math.min(100, Math.max(0, rawPercentage));
 
-    // Update user rank percentage
-    await userRef.update({
+    // Build update object - always set currentRank to ensure consistency
+    const updateData = {
       rankPercentage: Math.round(finalPercentage * 10) / 10,
       lastRankUpdateAt: admin.firestore.Timestamp.now(),
+      currentRank: currentRank, // Ensure currentRank is always set
       rankBreakdown: {
         timeScore: Math.round(timeScore),
         accuracyScore: Math.round(accuracyScore),
         consistencyScore: Math.round(consistencyScore),
         volumeScore: Math.round(volumeScore),
+        accountAgeDays: accountAgeDays,
+        totalShares: totalShares,
+        shareBonus: shareBonus,
       },
-    });
+    };
+
+    // Initialize missing rank-related fields
+    if (!userData.currentRankStartDate) {
+      updateData.currentRankStartDate = createdAt;
+    }
+    if (userData.rankUpgradeHistory === undefined) {
+      updateData.rankUpgradeHistory = [];
+    }
+    if (userData.weeklyActivityCount === undefined) {
+      updateData.weeklyActivityCount = 0;
+    }
+    if (userData.totalResolvedPredictions === undefined) {
+      updateData.totalResolvedPredictions = 0;
+    }
+
+    // Update user rank percentage
+    await userRef.update(updateData);
 
     return {
       success: true,
@@ -981,6 +1363,9 @@ exports.manualRankRecalculation = onCall({
         accuracyScore: Math.round(accuracyScore),
         consistencyScore: Math.round(consistencyScore),
         volumeScore: Math.round(volumeScore),
+        accountAgeDays: accountAgeDays,
+        totalShares: totalShares,
+        shareBonus: shareBonus,
       },
     };
   } catch (error) {
@@ -1052,7 +1437,10 @@ exports.recalculateMyRank = onCall({
     const correctVotes = userData.correctVotes || 0;
     const accuracyRate = totalVotes > 0 ? (correctVotes / totalVotes) * 100 : 0;
 
-    const currentRank = userData.currentRank || "Novice";
+    // Handle both 'currentRank' and legacy 'rank' field
+    let rawRank = userData.currentRank || userData.rank || "Novice";
+    // Capitalize first letter to ensure consistent format
+    const currentRank = rawRank.charAt(0).toUpperCase() + rawRank.slice(1).toLowerCase();
     
     // TIME_GATES: Days required to reach EACH rank from account creation
     // The time score should measure progress towards the NEXT rank
@@ -1092,10 +1480,19 @@ exports.recalculateMyRank = onCall({
     const minWeeks = MIN_WEEKS[currentRank] || 1;
     const consistencyScore = weeklyActivity >= minWeeks ? 85 : Math.min(85, (weeklyActivity / minWeeks) * 85);
 
+    // Volume/Engagement score (0-100) - includes predictions AND shares
     const totalPredictions = totalVotes;
+    const totalShares = userData.totalShares || 0;
+    
     const MIN_PREDICTIONS = {"Novice": 3, "Amateur": 10, "Analyst": 30, "Professional": 60, "Expert": 100, "Master": 150};
     const minPreds = MIN_PREDICTIONS[currentRank] || 3;
-    const volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+    
+    // Base volume score from predictions
+    let volumeScore = totalPredictions >= minPreds ? 100 : Math.min(100, (totalPredictions / minPreds) * 100);
+    
+    // Shares bonus: Each share adds 2% to volume score (max 20% bonus)
+    const shareBonus = Math.min(20, totalShares * 2);
+    volumeScore = Math.min(100, volumeScore + shareBonus);
 
     const WEIGHTS = {
       "Novice": {time: 0.50, accuracy: 0.30, consistency: 0.15, volume: 0.05},
@@ -1115,17 +1512,38 @@ exports.recalculateMyRank = onCall({
 
     const finalPercentage = Math.min(100, Math.max(0, rawPercentage));
 
-    // Update user rank percentage
-    await userRef.update({
+    // Build update object - always set currentRank to ensure consistency
+    const updateData = {
       rankPercentage: Math.round(finalPercentage * 10) / 10,
       lastRankUpdateAt: admin.firestore.Timestamp.now(),
+      currentRank: currentRank, // Ensure currentRank is always set
       rankBreakdown: {
         timeScore: Math.round(timeScore),
         accuracyScore: Math.round(accuracyScore),
         consistencyScore: Math.round(consistencyScore),
         volumeScore: Math.round(volumeScore),
+        accountAgeDays: accountAgeDays,
+        totalShares: totalShares,
+        shareBonus: shareBonus,
       },
-    });
+    };
+
+    // Initialize missing rank-related fields
+    if (!userData.currentRankStartDate) {
+      updateData.currentRankStartDate = createdAt;
+    }
+    if (userData.rankUpgradeHistory === undefined) {
+      updateData.rankUpgradeHistory = [];
+    }
+    if (userData.weeklyActivityCount === undefined) {
+      updateData.weeklyActivityCount = 0;
+    }
+    if (userData.totalResolvedPredictions === undefined) {
+      updateData.totalResolvedPredictions = 0;
+    }
+
+    // Update user rank percentage
+    await userRef.update(updateData);
 
     logger.info(`Rank updated for user ${userId}: ${finalPercentage}%`);
 
@@ -1138,6 +1556,8 @@ exports.recalculateMyRank = onCall({
         accuracyScore: Math.round(accuracyScore),
         consistencyScore: Math.round(consistencyScore),
         volumeScore: Math.round(volumeScore),
+        totalShares: totalShares,
+        shareBonus: shareBonus,
       },
       currentRank,
     };

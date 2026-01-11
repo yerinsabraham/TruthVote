@@ -15,7 +15,7 @@ import { AdminShell } from '@/components/admin/layout';
 import { DashboardOverview, AdminActionsLog } from '@/components/admin/dashboard';
 
 // Content components
-import { TrendingTopics, QuickCreate, PredictionsTable, PendingResolutions, ResolutionHistory, UsersTable, CategoriesManager, RankManagement, GeneralSettings } from '@/components/admin/content';
+import { TrendingTopics, QuickCreate, PredictionsTable, PendingResolutions, ResolutionHistory, UsersTable, CategoriesManager, RankManagement, GeneralSettings, SupportTickets } from '@/components/admin/content';
 
 // Legacy components - no longer needed
 // import UsersManager from '@/components/admin/UsersManager';
@@ -45,6 +45,7 @@ type ActiveView =
   | 'users-search'
   | 'users-table'
   | 'users-ranks'
+  | 'support-tickets'
   | 'settings-categories'
   | 'settings-sources'
   | 'settings-general';
@@ -192,6 +193,10 @@ export default function AdminPage() {
       
       case 'users-ranks':
         return <RankManagement />;
+
+      // Support
+      case 'support-tickets':
+        return <SupportTickets />;
 
       // Settings
       case 'settings-categories':

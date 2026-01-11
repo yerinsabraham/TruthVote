@@ -1,6 +1,8 @@
-# TruthVote - Prediction Platform
+# TruthVote - Public Opinion Platform
 
-A modern prediction and voting platform built with Next.js 15, Firebase, and TypeScript. Users make predictions on binary outcomes, earn points for accuracy, and compete on leaderboards.
+Vote on anything. Public opinion, tracked over time.
+
+A modern voting and polling platform built with Next.js 15, Firebase, and TypeScript.
 
 ## 🚀 Tech Stack
 

@@ -1,29 +1,34 @@
 // src/components/layout/Footer.tsx
+import Link from 'next/link';
+
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card mt-auto">
+    <footer className="border-t border-border bg-card mt-auto pb-20 md:pb-0">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-center md:text-left">
             <h3 className="font-bold text-primary mb-1">TruthVote</h3>
             <p className="text-sm text-muted-foreground">
-              Predict outcomes, earn points, compete.
+              Vote on anything. Public opinion, tracked over time.
             </p>
           </div>
           
-          <div className="flex gap-6 text-sm">
-            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6 text-sm">
+            <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors">
               About
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-              How It Works
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link href="/docs" className="text-muted-foreground hover:text-primary transition-colors">
+              Documentation
+            </Link>
+            <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
               Terms
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
               Privacy
-            </a>
+            </Link>
+            <Link href="/cookies" className="text-muted-foreground hover:text-primary transition-colors">
+              Cookies
+            </Link>
           </div>
         </div>
         

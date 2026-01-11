@@ -12,8 +12,8 @@ interface SEOHeadProps {
 }
 
 export function SEOHead({
-  title = 'TruthVote - Community Predictions Platform',
-  description = 'Vote on predictions, earn points, and compete with the community. Make your predictions on politics, sports, technology, and more.',
+  title = 'TruthVote - Public Opinion Platform',
+  description = 'Vote on anything. Public opinion, tracked over time.',
   image = '/og-image.png',
   url = 'https://project-cebe8bab-ec36-4869-931.web.app',
   type = 'website'

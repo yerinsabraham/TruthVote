@@ -46,15 +46,17 @@ interface Prediction {
   status?: string;
 }
 
-interface VoteActivity {
+interface ActivityItem {
   id: string;
-  odisplayName?: string;
+  type: 'vote' | 'comment';
+  userId: string;
   userDisplayName?: string;
-  option: string;
+  userPhotoURL?: string;
+  option?: string;
   optionLabel?: string;
   yesNo?: 'yes' | 'no';
+  content?: string; // For comments
   timestamp?: { toDate?: () => Date; seconds?: number };
-  userPhotoURL?: string;
 }
 
 function PredictionContent() {
@@ -67,7 +69,7 @@ function PredictionContent() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'comments' | 'activity'>('comments');
-  const [activities, setActivities] = useState<VoteActivity[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -107,26 +109,142 @@ function PredictionContent() {
     return () => unsubscribe();
   }, [id, router]);
 
-  // Subscribe to recent activity (votes)
+  // Update meta tags for social sharing
+  useEffect(() => {
+    if (!prediction) return;
+
+    const question = prediction.question;
+    const imageUrl = prediction.imageUrl || '/assets/truthvote_logo.png';
+    
+    // Get first 2-3 options for description
+    let optionsText = '';
+    if (prediction.displayTemplate === 'two-option-horizontal' || 
+        (prediction.optionA && prediction.optionB)) {
+      optionsText = `${prediction.optionA} vs ${prediction.optionB}`;
+    } else if (prediction.options && Array.isArray(prediction.options)) {
+      const firstOptions = prediction.options.slice(0, 3).map(opt => opt.label).join(', ');
+      const hasMore = prediction.options.length > 3;
+      optionsText = hasMore ? `${firstOptions}... and more` : firstOptions;
+    }
+    
+    const description = optionsText 
+      ? `${optionsText} - Make your prediction on TruthVote` 
+      : prediction.description || 'Make your prediction on TruthVote';
+
+    // Update document title
+    document.title = `${question} - TruthVote`;
+
+    // Update or create meta tags
+    const updateMetaTag = (property: string, content: string) => {
+      let metaTag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+      if (!metaTag) {
+        metaTag = document.createElement('meta');
+        metaTag.setAttribute('property', property);
+        document.head.appendChild(metaTag);
+      }
+      metaTag.setAttribute('content', content);
+    };
+
+    const updateNameTag = (name: string, content: string) => {
+      let metaTag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+      if (!metaTag) {
+        metaTag = document.createElement('meta');
+        metaTag.setAttribute('name', name);
+        document.head.appendChild(metaTag);
+      }
+      metaTag.setAttribute('content', content);
+    };
+
+    // Open Graph tags
+    updateMetaTag('og:title', question);
+    updateMetaTag('og:description', description);
+    updateMetaTag('og:image', imageUrl);
+    updateMetaTag('og:type', 'website');
+    updateMetaTag('og:site_name', 'TruthVote');
+    updateMetaTag('og:url', window.location.href);
+
+    // Twitter tags
+    updateNameTag('twitter:card', 'summary_large_image');
+    updateNameTag('twitter:title', question);
+    updateNameTag('twitter:description', description);
+    updateNameTag('twitter:image', imageUrl);
+
+    // Standard meta description
+    updateNameTag('description', description);
+  }, [prediction]);
+
+  // Subscribe to recent activity (votes and comments)
   useEffect(() => {
     if (!id) return;
 
+    // Subscribe to votes
     const votesQuery = query(
       collection(db, 'votes'),
-      where('pollId', '==', id),
-      orderBy('timestamp', 'desc'),
-      limit(20)
+      where('predictionId', '==', id),
+      orderBy('votedAt', 'desc'),
+      limit(15)
     );
 
-    const unsubscribe = onSnapshot(votesQuery, (snapshot) => {
-      const recentActivities = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as VoteActivity[];
-      setActivities(recentActivities);
+    // Subscribe to comments
+    const commentsQuery = query(
+      collection(db, 'comments'),
+      where('predictionId', '==', id),
+      orderBy('createdAt', 'desc'),
+      limit(15)
+    );
+
+    let voteActivities: ActivityItem[] = [];
+    let commentActivities: ActivityItem[] = [];
+
+    const updateCombinedActivities = () => {
+      const combined = [...voteActivities, ...commentActivities]
+        .sort((a, b) => {
+          const timeA = a.timestamp?.toDate?.()?.getTime() || a.timestamp?.seconds ? (a.timestamp.seconds! * 1000) : 0;
+          const timeB = b.timestamp?.toDate?.()?.getTime() || b.timestamp?.seconds ? (b.timestamp.seconds! * 1000) : 0;
+          return timeB - timeA;
+        })
+        .slice(0, 20);
+      setActivities(combined);
+    };
+
+    const unsubscribeVotes = onSnapshot(votesQuery, (snapshot) => {
+      voteActivities = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          type: 'vote' as const,
+          userId: data.userId,
+          userDisplayName: data.userDisplayName || 'Anonymous',
+          userPhotoURL: data.userPhotoURL,
+          option: data.option,
+          optionLabel: data.optionLabel,
+          yesNo: data.yesNo || data.voteType,
+          timestamp: data.votedAt || data.timestamp,
+        };
+      });
+      updateCombinedActivities();
     });
 
-    return () => unsubscribe();
+    const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
+      commentActivities = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          type: 'comment' as const,
+          userId: data.userId,
+          userDisplayName: data.userDisplayName || 'Anonymous',
+          userPhotoURL: data.userPhotoURL,
+          content: data.content,
+          timestamp: data.createdAt,
+        };
+      });
+      updateCombinedActivities();
+    });
+
+    return () => {
+      unsubscribeVotes();
+      unsubscribeComments();
+    };
   }, [id]);
 
   // Check user's existing vote
@@ -821,11 +939,11 @@ function PredictionContent() {
                   // Activity Feed
                   <div className="space-y-3">
                     {activities.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">No activity yet. Be the first to vote!</p>
+                      <p className="text-center text-muted-foreground py-8">No activity yet. Be the first to vote or comment!</p>
                     ) : (
                       activities.map((activity) => {
                         const activityDate = getDateFromTimestamp(activity.timestamp);
-                        const displayName = activity.userDisplayName || activity.odisplayName || 'Anonymous';
+                        const displayName = activity.userDisplayName || 'Anonymous';
                         
                         return (
                           <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
@@ -847,22 +965,37 @@ function PredictionContent() {
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{displayName}</span>
-                                <span className="text-muted-foreground text-sm">voted</span>
-                                {activity.yesNo ? (
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    activity.yesNo === 'yes' 
-                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                  }`}>
-                                    {activity.yesNo === 'yes' ? 'Yes' : 'No'}
-                                  </span>
+                                <a href={`/profile?id=${activity.userId}`} className="font-medium text-sm hover:text-primary transition-colors">{displayName}</a>
+                                {activity.type === 'comment' ? (
+                                  <>
+                                    <span className="text-muted-foreground text-sm">commented</span>
+                                    <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                                  </>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                                    {activity.optionLabel || getOptionLabel(activity.option)}
-                                  </span>
+                                  <>
+                                    <span className="text-muted-foreground text-sm">voted</span>
+                                    {activity.yesNo ? (
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                        activity.yesNo === 'yes' 
+                                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                      }`}>
+                                        {activity.yesNo === 'yes' ? 'Yes' : 'No'}
+                                      </span>
+                                    ) : activity.option && (
+                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                        {activity.optionLabel || getOptionLabel(activity.option)}
+                                      </span>
+                                    )}
+                                  </>
                                 )}
                               </div>
+                              {/* Show comment preview */}
+                              {activity.type === 'comment' && activity.content && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                  &ldquo;{activity.content}&rdquo;
+                                </p>
+                              )}
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {activityDate ? formatDistanceToNow(activityDate, { addSuffix: true }) : 'Just now'}
                               </p>
@@ -927,11 +1060,11 @@ function PredictionContent() {
                     // Activity Feed
                     <div className="space-y-3">
                       {activities.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">No activity yet. Be the first to vote!</p>
+                        <p className="text-center text-muted-foreground py-8">No activity yet. Be the first to vote or comment!</p>
                       ) : (
                         activities.map((activity) => {
                           const activityDate = getDateFromTimestamp(activity.timestamp);
-                          const displayName = activity.userDisplayName || activity.odisplayName || 'Anonymous';
+                          const displayName = activity.userDisplayName || 'Anonymous';
                           
                           return (
                             <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
@@ -953,22 +1086,37 @@ function PredictionContent() {
                               {/* Content */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium text-sm">{displayName}</span>
-                                  <span className="text-muted-foreground text-sm">voted</span>
-                                  {activity.yesNo ? (
-                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                      activity.yesNo === 'yes' 
-                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                    }`}>
-                                      {activity.yesNo === 'yes' ? 'Yes' : 'No'}
-                                    </span>
+                                  <a href={`/profile?id=${activity.userId}`} className="font-medium text-sm hover:text-primary transition-colors">{displayName}</a>
+                                  {activity.type === 'comment' ? (
+                                    <>
+                                      <span className="text-muted-foreground text-sm">commented</span>
+                                      <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+                                    </>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                                      {activity.optionLabel || getOptionLabel(activity.option)}
-                                    </span>
+                                    <>
+                                      <span className="text-muted-foreground text-sm">voted</span>
+                                      {activity.yesNo ? (
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                          activity.yesNo === 'yes' 
+                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                            : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                        }`}>
+                                          {activity.yesNo === 'yes' ? 'Yes' : 'No'}
+                                        </span>
+                                      ) : activity.option && (
+                                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                          {activity.optionLabel || getOptionLabel(activity.option)}
+                                        </span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
+                                {/* Show comment preview */}
+                                {activity.type === 'comment' && activity.content && (
+                                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                    &ldquo;{activity.content}&rdquo;
+                                  </p>
+                                )}
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                   {activityDate ? formatDistanceToNow(activityDate, { addSuffix: true }) : 'Just now'}
                                 </p>

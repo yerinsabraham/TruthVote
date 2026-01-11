@@ -8,3 +8,4 @@ export { default as UsersTable } from './UsersTable';
 export { default as CategoriesManager } from './CategoriesManager';
 export { default as RankManagement } from './RankManagement';
 export { default as GeneralSettings } from './GeneralSettings';
+export { default as SupportTickets } from './SupportTickets';

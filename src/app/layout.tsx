@@ -17,13 +17,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'TruthVote - Community Predictions Platform',
-  description: 'Vote on predictions, earn points, and compete with the community. Make your predictions on politics, sports, technology, and more.',
-  keywords: ['predictions', 'voting', 'community', 'leaderboard', 'gamification', 'polls', 'forecasting'],
+  title: 'TruthVote - Public Opinion Platform',
+  description: 'Vote on anything. Public opinion, tracked over time.',
+  keywords: ['voting', 'polls', 'public opinion', 'community', 'surveys', 'trends', 'tracking'],
   authors: [{ name: 'TruthVote' }],
   openGraph: {
-    title: 'TruthVote - Community Predictions Platform',
-    description: 'Vote on predictions, earn points, and compete with the community.',
+    title: 'TruthVote - Public Opinion Platform',
+    description: 'Vote on anything. Public opinion, tracked over time.',
     type: 'website',
     url: 'https://project-cebe8bab-ec36-4869-931.web.app',
     siteName: 'TruthVote',
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'TruthVote - Community Predictions Platform',
-    description: 'Vote on predictions, earn points, and compete with the community.',
+    title: 'TruthVote - Public Opinion Platform',
+    description: 'Vote on anything. Public opinion, tracked over time.',
     images: ['/og-image.png'],
   },
   viewport: 'width=device-width, initial-scale=1',
