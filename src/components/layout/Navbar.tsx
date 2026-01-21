@@ -80,7 +80,7 @@ export function Navbar({ searchQuery = '', onSearchChange }: NavbarProps = {}) {
           <div className="flex items-center gap-4 flex-1">
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
               <Image
-                src="/assets/truthvote_logo.png"
+                src="/assets/tv_logo_icon_transparent.png"
                 alt="TruthVote"
                 width={32}
                 height={32}

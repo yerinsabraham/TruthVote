@@ -114,7 +114,7 @@ function PredictionContent() {
     if (!prediction) return;
 
     const question = prediction.question;
-    const imageUrl = prediction.imageUrl || '/assets/truthvote_logo.png';
+    const imageUrl = prediction.imageUrl || '/assets/tv_logo_icon_transparent.png';
     
     // Get first 2-3 options for description
     let optionsText = '';

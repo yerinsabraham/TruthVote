@@ -10,7 +10,7 @@ export default {
     extend: {
       colors: {
         // TruthVote brand colors
-        primary: '#0076a3',
+        primary: '#082a5c',
         secondary: '#6c757d',
         success: '#10B981',
         danger: '#EF4444',

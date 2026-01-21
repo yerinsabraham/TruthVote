@@ -6,7 +6,7 @@
   --color-foreground: #111827;
   --color-card: #FFFFFF;
   --color-card-foreground: #111827;
-  --color-primary: #00649c;
+  --color-primary: #082a5c;
   --color-success: #059669;
   --color-danger: #DC2626;
   --color-warning: #F59E0B;
@@ -71,7 +71,7 @@ body {
 }
 
 .text-gradient {
-  background: linear-gradient(to right, #0076a3, #60A5FA);
+  background: linear-gradient(to right, #082a5c, #60A5FA);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

@@ -109,7 +109,7 @@ exports.sharePreview = onRequest({cors: true}, async (req, res) => {
     // Set your Cloudinary cloud name here
     const CLOUDINARY_CLOUD_NAME = 'dgfdbfyeo';
     
-    let imageUrl = thumbnailUrl || 'https://truthvote.io/assets/truthvote_logo.png';
+    let imageUrl = thumbnailUrl || 'https://truthvote.io/assets/tv_logo_icon_transparent.png';
     
     // Only generate Cloudinary URL if cloud name is configured
     if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_CLOUD_NAME !== 'YOUR_CLOUD_NAME') {
@@ -208,7 +208,7 @@ exports.sharePreview = onRequest({cors: true}, async (req, res) => {
         logger.info('Generated Cloudinary URL', { urlLength: imageUrl.length });
       } catch (cloudinaryError) {
         logger.error('Cloudinary URL generation failed, using fallback', cloudinaryError);
-        imageUrl = thumbnailUrl || 'https://truthvote.io/assets/truthvote_logo.png';
+        imageUrl = thumbnailUrl || 'https://truthvote.io/assets/tv_logo_icon_transparent.png';
       }
     }
 

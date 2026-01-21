@@ -43,10 +43,15 @@ export const metadata: Metadata = {
     images: ['/og-image.png'],
   },
   viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#00649c',
+  themeColor: '#082a5c',
   icons: {
-    icon: '/assets/truthvote_logo.png',
-    apple: '/assets/truthvote_logo.png',
+    icon: [
+      { url: '/assets/tv_logo_icon_transparent.png', sizes: 'any' },
+      { url: '/assets/tv_logo_icon_transparent.png', sizes: '16x16', type: 'image/png' },
+      { url: '/assets/tv_logo_icon_transparent.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: '/assets/tv_logo_icon_transparent.png',
+    shortcut: '/assets/tv_logo_icon_transparent.png',
   },
 };
 
