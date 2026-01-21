@@ -13,6 +13,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import Link from 'next/link';
 
 // Rank colors mapping
 const RANK_COLORS: Record<string, string> = {
@@ -44,6 +45,15 @@ interface Vote {
   isCorrect?: boolean;
 }
 
+interface SavedPrediction {
+  id: string;
+  predictionId: string;
+  question: string;
+  imageUrl?: string;
+  status?: string;
+  createdAt: any;
+}
+
 function ProfileContent() {
   const searchParams = useSearchParams();
   const urlUserId = searchParams.get('id');
@@ -55,9 +65,11 @@ function ProfileContent() {
   
   const [profile, setProfile] = useState<any>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [savedPredictions, setSavedPredictions] = useState<SavedPrediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [memberSince, setMemberSince] = useState<string>('');
   const [refreshingRank, setRefreshingRank] = useState(false);
+  const [activeTab, setActiveTab] = useState<'predictions' | 'saved'>('predictions');
 
   useEffect(() => {
     // Wait for auth to load before checking userId
@@ -159,6 +171,54 @@ function ProfileContent() {
           setVotes(votesWithDetails);
         } catch (err) {
           console.log('Votes query error (index may still be building):', err);
+        }
+
+        // Load bookmarked/saved predictions (only for own profile)
+        if (isOwnProfile && currentUser) {
+          try {
+            const bookmarksQuery = query(
+              collection(db, 'bookmarks'),
+              where('userId', '==', currentUser.uid),
+              orderBy('createdAt', 'desc')
+            );
+            const bookmarksSnapshot = await getDocs(bookmarksQuery);
+            
+            const savedWithDetails = await Promise.all(
+              bookmarksSnapshot.docs.map(async (bookmarkDoc) => {
+                const bookmarkData = bookmarkDoc.data();
+                let question = 'Unknown Prediction';
+                let imageUrl = null;
+                let status = 'active';
+                
+                if (bookmarkData.predictionId) {
+                  try {
+                    const predDoc = await getDoc(doc(db, 'predictions', bookmarkData.predictionId));
+                    if (predDoc.exists()) {
+                      const predData = predDoc.data();
+                      question = predData.question || question;
+                      imageUrl = predData.imageUrl || null;
+                      status = predData.status || 'active';
+                    }
+                  } catch (err) {
+                    console.log('Error fetching saved prediction:', err);
+                  }
+                }
+                
+                return {
+                  id: bookmarkDoc.id,
+                  predictionId: bookmarkData.predictionId,
+                  question,
+                  imageUrl,
+                  status,
+                  createdAt: bookmarkData.createdAt,
+                } as SavedPrediction;
+              })
+            );
+            
+            setSavedPredictions(savedWithDetails);
+          } catch (err) {
+            console.log('Bookmarks query error:', err);
+          }
         }
 
         setLoading(false);
@@ -488,114 +548,245 @@ function ProfileContent() {
           </div>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Activity Section with Tabs */}
         <Card className="overflow-hidden">
+          {/* Tabs Header */}
           <div className="px-6 py-4 border-b border-border/50 bg-muted/20">
-            <h3 className="text-lg font-semibold">Recent Predictions</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {isOwnProfile ? 'Your voting history' : 'Voting history'}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setActiveTab('predictions')}
+                className={`text-lg font-semibold transition-colors ${
+                  activeTab === 'predictions' 
+                    ? 'text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Recent Predictions
+              </button>
+              {isOwnProfile && (
+                <button
+                  onClick={() => setActiveTab('saved')}
+                  className={`text-lg font-semibold transition-colors flex items-center gap-2 ${
+                    activeTab === 'saved' 
+                      ? 'text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                  Saved
+                  {savedPredictions.length > 0 && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {savedPredictions.length}
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {activeTab === 'predictions' 
+                ? (isOwnProfile ? 'Your voting history' : 'Voting history')
+                : 'Predictions you saved for later'}
             </p>
+            {/* Tab indicator */}
+            <div className="flex gap-4 mt-3">
+              <div 
+                className={`h-0.5 transition-all ${activeTab === 'predictions' ? 'bg-primary w-32' : 'bg-transparent w-32'}`}
+              />
+              {isOwnProfile && (
+                <div 
+                  className={`h-0.5 transition-all ${activeTab === 'saved' ? 'bg-primary w-16' : 'bg-transparent w-16'}`}
+                />
+              )}
+            </div>
           </div>
           
-          {votes.length === 0 ? (
-            <div className="text-center py-16 px-6">
-              <div className="w-16 h-16 rounded-2xl bg-muted/50 mx-auto mb-4 flex items-center justify-center">
-                <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h4 className="text-lg font-semibold text-foreground mb-2">No predictions yet</h4>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                {isOwnProfile 
-                  ? "Start voting on predictions to build your track record!" 
-                  : "This user hasn't voted on any predictions yet."}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {votes.map(vote => (
-                <a
-                  key={vote.id}
-                  href={`/prediction?id=${vote.predictionId}`}
-                  className="flex gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                >
-                  {/* Prediction Image */}
-                  <div className="flex-shrink-0">
-                    {vote.predictionImage ? (
-                      <img 
-                        src={vote.predictionImage}
-                        alt=""
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-border/50"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 py-1">
-                    <h4 className="font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2">
-                      {vote.predictionQuestion || 'Prediction'}
-                    </h4>
-                    
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                      {/* Vote Choice */}
-                      <span 
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-white"
-                        style={{ backgroundColor: vote.option === 'A' ? '#3B82F6' : '#8B5CF6' }}
-                      >
-                        Voted: {vote.optionLabel || `Option ${vote.option}`}
-                      </span>
-                      
-                      {/* Result Badge */}
-                      {vote.isCorrect !== undefined && (
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                          vote.isCorrect 
-                            ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
-                            : 'bg-red-500/10 text-red-600 border border-red-500/20'
-                        }`}>
-                          {vote.isCorrect ? (
-                            <>
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Correct
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                              Incorrect
-                            </>
-                          )}
-                        </span>
-                      )}
-                      
-                      {/* Date */}
-                      <span className="text-muted-foreground text-xs ml-auto">
-                        {vote.votedAt?.toDate?.()?.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: vote.votedAt?.toDate?.()?.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                        }) || ''}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Arrow */}
-                  <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          {/* Predictions Tab Content */}
+          {activeTab === 'predictions' && (
+            <>
+              {votes.length === 0 ? (
+                <div className="text-center py-16 px-6">
+                  <div className="w-16 h-16 rounded-2xl bg-muted/50 mx-auto mb-4 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                </a>
-              ))}
-            </div>
+                  <h4 className="text-lg font-semibold text-foreground mb-2">No predictions yet</h4>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                    {isOwnProfile 
+                      ? "Start voting on predictions to build your track record!" 
+                      : "This user hasn't voted on any predictions yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {votes.map(vote => (
+                    <Link
+                      key={vote.id}
+                      href={`/prediction?id=${vote.predictionId}`}
+                      className="flex gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    >
+                      {/* Prediction Image */}
+                      <div className="flex-shrink-0">
+                        {vote.predictionImage ? (
+                          <img 
+                            src={vote.predictionImage}
+                            alt=""
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-border/50"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 py-1">
+                        <h4 className="font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2">
+                          {vote.predictionQuestion || 'Prediction'}
+                        </h4>
+                        
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          {/* Vote Choice */}
+                          <span 
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-white"
+                            style={{ backgroundColor: vote.option === 'A' ? '#3B82F6' : '#8B5CF6' }}
+                          >
+                            Voted: {vote.optionLabel || `Option ${vote.option}`}
+                          </span>
+                          
+                          {/* Result Badge */}
+                          {vote.isCorrect !== undefined && (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                              vote.isCorrect 
+                                ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
+                                : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                            }`}>
+                              {vote.isCorrect ? (
+                                <>
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                  Correct
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                  Incorrect
+                                </>
+                              )}
+                            </span>
+                          )}
+                          
+                          {/* Date */}
+                          <span className="text-muted-foreground text-xs ml-auto">
+                            {vote.votedAt?.toDate?.()?.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: vote.votedAt?.toDate?.()?.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                            }) || ''}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Arrow */}
+                      <div className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          
+          {/* Saved Tab Content */}
+          {activeTab === 'saved' && isOwnProfile && (
+            <>
+              {savedPredictions.length === 0 ? (
+                <div className="text-center py-16 px-6">
+                  <div className="w-16 h-16 rounded-2xl bg-muted/50 mx-auto mb-4 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-foreground mb-2">No saved predictions</h4>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                    Save predictions you want to come back to later by clicking the bookmark icon.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {savedPredictions.map(saved => (
+                    <Link
+                      key={saved.id}
+                      href={`/prediction?id=${saved.predictionId}`}
+                      className="flex gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    >
+                      {/* Prediction Image */}
+                      <div className="flex-shrink-0">
+                        {saved.imageUrl ? (
+                          <img 
+                            src={saved.imageUrl}
+                            alt=""
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-border/50"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 py-1">
+                        <h4 className="font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2">
+                          {saved.question}
+                        </h4>
+                        
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          {/* Status Badge */}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                            saved.status === 'active' 
+                              ? 'bg-green-500/10 text-green-600 border border-green-500/20'
+                              : saved.status === 'resolved'
+                                ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                                : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {saved.status === 'active' ? '🟢 Active' : saved.status === 'resolved' ? '✓ Resolved' : saved.status}
+                          </span>
+                          
+                          {/* Saved Date */}
+                          <span className="text-muted-foreground text-xs ml-auto">
+                            Saved {saved.createdAt?.toDate?.()?.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric'
+                            }) || ''}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Bookmark Icon */}
+                      <div className="flex-shrink-0 self-center">
+                        <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </Card>
       </div>
