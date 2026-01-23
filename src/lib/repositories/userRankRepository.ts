@@ -155,10 +155,12 @@ export async function updateUserRank(
 export async function updateUserActivityMetrics(
   userId: string,
   updates: {
+    totalPredictions?: number;
     totalResolvedPredictions?: number;
     correctPredictions?: number;
     accuracyRate?: number;
     contrarianWinsCount?: number;
+    weeklyActivityCount?: number;
     lastActiveAt?: string;
   }
 ): Promise<void> {
@@ -167,6 +169,9 @@ export async function updateUserActivityMetrics(
     
     const firestoreUpdates: any = {};
     
+    if (updates.totalPredictions !== undefined) {
+      firestoreUpdates.totalPredictions = updates.totalPredictions;
+    }
     if (updates.totalResolvedPredictions !== undefined) {
       firestoreUpdates.totalResolvedPredictions = updates.totalResolvedPredictions;
     }
@@ -178,6 +183,9 @@ export async function updateUserActivityMetrics(
     }
     if (updates.contrarianWinsCount !== undefined) {
       firestoreUpdates.contrarianWinsCount = updates.contrarianWinsCount;
+    }
+    if (updates.weeklyActivityCount !== undefined) {
+      firestoreUpdates.weeklyActivityCount = updates.weeklyActivityCount;
     }
     if (updates.lastActiveAt !== undefined) {
       firestoreUpdates.lastActiveAt = Timestamp.fromDate(
