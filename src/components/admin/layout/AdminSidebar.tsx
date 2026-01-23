@@ -15,7 +15,8 @@ import {
   Rss,
   Activity,
   Users,
-  Inbox
+  Inbox,
+  Bug
 } from 'lucide-react';
 
 interface NavItem {
@@ -72,6 +73,7 @@ const navigationConfig: NavSection[] = [
       { id: 'table', label: 'All Users', icon: Users },
       { id: 'search', label: 'Search Users', icon: UserSearch },
       { id: 'ranks', label: 'Rank Management', icon: Award },
+      { id: 'debug', label: 'Debug Rank', icon: Bug },
     ]
   },
   {
